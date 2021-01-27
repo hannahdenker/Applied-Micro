@@ -1,0 +1,348 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    htmlTableOfContents();
+} );                        
+
+function htmlTableOfContents( documentRef ) {
+    var documentRef = documentRef || document;
+    var toc = documentRef.getElementById("toc");
+//  Use headings inside <article> only:
+//  var headings = [].slice.call(documentRef.body.querySelectorAll('article h1, article h2, article h3, article h4, article h5, article h6'));
+    var headings = [].slice.call(documentRef.body.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach(function (heading, index) {
+        var ref = "toc" + index;
+        if ( heading.hasAttribute( "id" ) ) 
+            ref = heading.getAttribute( "id" );
+        else
+            heading.setAttribute( "id", ref );
+
+        var link = documentRef.createElement( "a" );
+        link.setAttribute( "href", "#"+ ref );
+        link.textContent = heading.textContent;
+
+        var div = documentRef.createElement( "div" );
+        div.setAttribute( "class", heading.tagName.toLowerCase() );
+        div.appendChild( link );
+        toc.appendChild( div );
+    });
+}
+
+
+try {
+    module.exports = htmlTableOfContents;
+} catch (e) {
+    // module.exports is not defined
+}
+</script>
+</head>
+<p style="font-weight:800; font-size:42px; color:#4934eb">Problem Set 1</p>
+<p>Course: ECON 8848<br />
+Author: Dan Mangan<br />
+Collaborators: Hannah Denker and Michelle Doughty<br />
+Date: 26 Jan 2021</p>
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+<h2><a href="#1-load-and-get-to-know-the-data" id="1-load-and-get-to-know-the-data">1. Load and get to know the data</a></h2>
+<p>First, I will load the dataset into memory and produce an overview of its contents using the <strong>describe</strong> command.</p>
+<pre><code>. use &quot;${rawdatapath}acs2007.dta&quot;, clear 
+
+. describe
+
+Contains data from /Users/danielmangan/Documents/CU/Applied-Micro/1 Raw Data/acs2007.dta
+  obs:     2,913,425                          
+ vars:            14                          18 Aug 2009 16:53
+ size:    90,316,175                          
+-----------------------------------------------------------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+-----------------------------------------------------------------------------------------------------------------------------------
+year            int     %8.0g      yearlbl    Census year
+datanum         byte    %8.0g                 Data set number
+serial          double  %10.0g                Household serial number
+hhwt            int     %8.0g                 Household weight
+gq              byte    %43.0g     gqlbl      Group quarters status
+perwt           int     %8.0g                 Person weight
+age             int     %36.0g     agelbl     Age
+sex             byte    %8.0g      sexlbl     Sex
+marst           byte    %23.0g     marstlbl   Marital status
+bpl             long    %27.0g     bpllbl     Birthplace [general version]
+yrsusa1         byte    %8.0g                 Years in the United States
+educrec         byte    %23.0g     educreclbl
+                                              Educational attainment recode
+empstat         byte    %18.0g     empstatlbl
+                                              Employment status [general version]
+incwage         long    %12.0g                Wage and salary income
+-----------------------------------------------------------------------------------------------------------------------------------
+Sorted by: 
+
+</code></pre>
+<p>This dataset    2,913,425 has observations and 14 variables.</p>
+<p>The formatting of the variables appears to be okay, though I would probabaly recode a couple of them:</p>
+<ul>
+<li>I would rename "sex" to be "female" and recode it as 0=male and 1=female.</li>
+<li>Missingness in incwage seems to be coded as "99999" but should be ".".</li>
+</ul>
+<p>Next, I summarize the dataset to examine each variable in more detail.</p>
+<pre><code>. su 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |  2,913,425        2007           0       2007       2007
+     datanum |  2,913,425           1           0          1          1
+      serial |  2,913,425    675543.4    395790.3          4    1360285
+        hhwt |  2,913,425    97.06509    66.08678          1       1466
+          gq |  2,913,425    1.001459    .0464898          1          5
+-------------+---------------------------------------------------------
+       perwt |  2,913,425    100.7405    70.77215          1       2032
+         age |  2,913,425    38.89746    23.06821          0         95
+         sex |  2,913,425    1.517572    .4996912          1          2
+       marst |  2,913,425     3.49533    2.326408          1          6
+         bpl |  2,913,425    67.13137    117.2534          1        950
+-------------+---------------------------------------------------------
+     yrsusa1 |  2,913,425    2.457155    8.571573          0         88
+     educrec |  2,913,425    6.232514    2.705586          0          9
+     empstat |  2,913,425    1.386688    1.106982          0          3
+     incwage |  2,913,425      231183    398774.6          0     999999
+
+</code></pre>
+<p>As noted above, there is strange coding for missigness in the incwage variable. Genreally to find odd coding issues for missing values, we can check min and max values.</p>
+<p>To find the range of <strong>age</strong>, we can summarize only that variable.</p>
+<pre><code>. su age
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+         age |  2,913,425    38.89746    23.06821          0         95
+
+</code></pre>
+<p>We see here that the age variable ranges between 0 and 95 years.</p>
+<h2><a href="#2-getting-the-sample-right" id="2-getting-the-sample-right">2. Getting the sample right</a></h2>
+<p>Next, we will eliminate observations younger than 18 and older than 55 using <code>drop</code>. We&rsquo;ll also drop observations who are not employed. Since this means we&rsquo;ll be dropping both unemployed observations and those not in the labor market, it will be easier to use <code>keep</code> and just retain observations who are employed (these are coded as &ldquo;1&rdquo; in the empstat variable).</p>
+<pre><code>. drop if age &lt; 18 | age &gt; 55
+(1,462,460 observations deleted)
+
+. keep if empstat==1
+(345,821 observations deleted)
+
+</code></pre>
+<h2><a href="#3-new-variables" id="3-new-variables">3. New Variables</a></h2>
+<h3><a href="#3a-make-variable-for-female" id="3a-make-variable-for-female">3a. Make variable for &ldquo;female&rdquo;.</a></h3>
+<p>Next, we&rsquo;d like a binary dummy variable equal to 1 for females and 0 for males. We can use the <code>recode</code> command for this.</p>
+<pre><code>. recode sex (1=0) (2=1), gen(female)
+(1105144 differences between sex and female)
+
+</code></pre>
+<p>Adding value labels will help us remember the meaning of each value. To do this, we first define the value label. The next line of code applies the label &ldquo;female&rdquo; to the variable. We also label the variable itself with a helpful description of what it contains. I like to start variable labels which what type of variable it is followed by a colon.</p>
+<pre><code>. lab def female 0 &quot;male&quot; 1 &quot;female&quot;
+
+. lab val female female 
+
+. lab var female &quot;dummy: 1=female; 0=male&quot;
+
+</code></pre>
+<p>A quick crosstab with the old <strong>sex</strong> variable will ensure we encoded the variable correctly. We&rsquo;ll use the <code>missing</code> option after the comma to include any missing values in the crosstab.</p>
+<pre><code>. tab female sex, mi
+
+    dummy: |
+ 1=female; |          Sex
+    0=male |      Male     Female |     Total
+-----------+----------------------+----------
+      male |   578,722          0 |   578,722 
+    female |         0    526,422 |   526,422 
+-----------+----------------------+----------
+     Total |   578,722    526,422 | 1,105,144 
+
+</code></pre>
+<p>As we see above, the crosstab shows that our new variable has been coded properly.</p>
+<h3><a href="#3b-make-variable-for-immigrant" id="3b-make-variable-for-immigrant">3b. Make variable for &ldquo;immigrant&rdquo;.</a></h3>
+<p>We&rsquo;ll use a slightly different approach to create a dummy variable equal to 1 for immigrants and 0 for US-born observations. First we generate a new variable equal to 1 for all observations. Then we will replace this variable with a value of 0 for all observations with vlaues of the birthplace variable less than or equal to 120. As above, we&rsquo;ll add value and variable labels.</p>
+<pre><code>. gen immigrant = 1 
+
+. replace immigrant = 0 if bpl &lt; 121
+(938,965 real changes made)
+
+. lab def immigrant 0 &quot;immigrant&quot; 1 &quot;US born&quot;
+
+. lab val immigrant immigrant 
+
+. lab var immigrant &quot;dummy: 1=immigrant; 0=US born&quot;
+
+</code></pre>
+<h3><a href="#3c-make-variable-for-years-of-education" id="3c-make-variable-for-years-of-education">3c. Make variable for years of education.</a></h3>
+<p>Next, we need to recode the current education variable to the following scheme:</p>
+<ul>
+<li>0 = No schooling, none, or preschool</li>
+<li>2.5 = Grades 1-4</li>
+<li>6.5 = Grades 5-8</li>
+<li>9, 10, 11, 12 = Grades 9, 10, 11, and 12, respectively</li>
+<li>14 = 1-3 years of college = 16 = 4+ years of college</li>
+</ul>
+<p>We&rsquo;ll use this scheme to make a new variable called <strong>educyears</strong>, but first let&rsquo;s look at the current coding scheme. We can use <code>label list</code> for this. Once we&rsquo;re able to clearly see the old code scheme for the old varible, <strong>educrec</strong>, we can recode to our new scheme. After running a crosstab to verify that the recode went as planned, we&rsquo;ll label the variable as &ldquo;Education in years&rdquo;, with &ldquo;categ:&rdquo; in front to remind us that it is a categorical variable.</p>
+<pre><code>. lab list educreclbl 
+educreclbl:
+           0 N/A  or No schooling
+           1 None or preschool
+           2 Grade 1, 2, 3, or 4
+           3 Grade 5, 6, 7, or 8
+           4 Grade 9
+           5 Grade 10
+           6 Grade 11
+           7 Grade 12
+           8 1 to 3 years of college
+           9 4+ years of college
+
+. recode educrec (0/1=0) (2=2.5) (3=6.5) (4=9) (5=10) (6=11) (7=12) (8=14) (9=16) ///
+&gt;         , gen(educyears)
+(1105144 differences between educrec and educyears)
+
+. tab educrec educyears, mi 
+
+          Educational |                    RECODE of educrec (Educational attainment recode)
+    attainment recode |         0        2.5        6.5          9         10         11         12         14 |     Total
+----------------------+----------------------------------------------------------------------------------------+----------
+    None or preschool |     3,729          0          0          0          0          0          0          0 |     3,729 
+  Grade 1, 2, 3, or 4 |         0      4,034          0          0          0          0          0          0 |     4,034 
+  Grade 5, 6, 7, or 8 |         0          0     22,240          0          0          0          0          0 |    22,240 
+              Grade 9 |         0          0          0     13,029          0          0          0          0 |    13,029 
+             Grade 10 |         0          0          0          0     15,277          0          0          0 |    15,277 
+             Grade 11 |         0          0          0          0          0     21,684          0          0 |    21,684 
+             Grade 12 |         0          0          0          0          0          0    320,379          0 |   320,379 
+1 to 3 years of colle |         0          0          0          0          0          0          0    351,345 |   351,345 
+  4+ years of college |         0          0          0          0          0          0          0          0 |   353,427 
+----------------------+----------------------------------------------------------------------------------------+----------
+                Total |     3,729      4,034     22,240     13,029     15,277     21,684    320,379    351,345 | 1,105,144 
+
+
+                      | RECODE of
+                      |  educrec
+                      | (Education
+                      |     al
+                      | attainment
+          Educational |  recode)
+    attainment recode |        16 |     Total
+----------------------+-----------+----------
+    None or preschool |         0 |     3,729 
+  Grade 1, 2, 3, or 4 |         0 |     4,034 
+  Grade 5, 6, 7, or 8 |         0 |    22,240 
+              Grade 9 |         0 |    13,029 
+             Grade 10 |         0 |    15,277 
+             Grade 11 |         0 |    21,684 
+             Grade 12 |         0 |   320,379 
+1 to 3 years of colle |         0 |   351,345 
+  4+ years of college |   353,427 |   353,427 
+----------------------+-----------+----------
+                Total |   353,427 | 1,105,144 
+
+. lab var educyears &quot;categ: education in years&quot;
+
+</code></pre>
+<h3><a href="#3d-make-variables-for-potential-experience-and-potential-experience-squared" id="3d-make-variables-for-potential-experience-and-potential-experience-squared">3d. Make variables for potential experience and potential experience squared.</a></h3>
+<p>This new variable will be equal to the observation&rsquo;s age minus years of education minus 6.</p>
+<pre><code>. gen exper = age-educyears-6
+
+. lab var exper &quot;numer: potential experience&quot;
+
+. gen expersq = exper^2
+
+. lab var expersq &quot;numer: squared potential experience&quot;
+
+</code></pre>
+<h3><a href="#3e-make-variable-for-natural-log-of-wage-and-salary-income" id="3e-make-variable-for-natural-log-of-wage-and-salary-income">3e. Make variable for natural log of wage and salary income.</a></h3>
+<p>Next, we create a variable by taking the natural log of <strong>incwage</strong>. We&rsquo;ll label this variable as &ldquo;numer: natural log of incwage&rdquo;</p>
+<pre><code>. gen logearn = ln(incwage)
+(61,932 missing values generated)
+
+. lab var logearn &quot;numer: natural log of incwage&quot;
+
+</code></pre>
+<p>The output tells us that 61,932 missing values were generated. This likely corresponds to values of zero in <strong>incwage</strong>, since the log of 0 is undefined. Let&rsquo;s just make sure this missingness is the same as the number of zeros in the incwage variable.</p>
+<pre><code>. count if incwage==0
+  61,932
+
+</code></pre>
+<p>Since the numbers are the same, this seems like a good explanation.</p>
+<h3><a href="#3f-save-as-new-dataset" id="3f-save-as-new-dataset">3f. Save as new dataset.</a></h3>
+<p>We&rsquo;ll use the <code>save</code> command now to save a new copy of our dataset under a different name. I like to set global paths for each project in a separate .do file; the <em>gendatapath</em> global points Stata to where I want my generated datasets saved.</p>
+<pre><code>. save &quot;${gendatapath}asrecoded.dta&quot;, replace 
+(note: file /Users/danielmangan/Documents/CU/Applied-Micro/2 Generated Datasets/asrecoded.dta not found)
+file /Users/danielmangan/Documents/CU/Applied-Micro/2 Generated Datasets/asrecoded.dta saved
+
+</code></pre>
+<h1><a href="#4-basic-analysis" id="4-basic-analysis">4. Basic Analysis</a></h1>
+<p>First, we will run a regression of logearn on educyears, exper, and expersq.</p>
+<pre><code>. reg logearn educyears exper expersq
+
+      Source |       SS           df       MS      Number of obs   = 1,043,212
+-------------+----------------------------------   F(3, 1043208)   &gt;  99999.00
+       Model |  285321.589         3  95107.1962   Prob &gt; F        =    0.0000
+    Residual |  847375.794 1,043,208  .812278849   R-squared       =    0.2519
+-------------+----------------------------------   Adj R-squared   =    0.2519
+       Total |  1132697.38 1,043,211  1.08577975   Root MSE        =    .90127
+
+------------------------------------------------------------------------------
+     logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   educyears |   .1418801    .000401   353.82   0.000     .1410941     .142666
+       exper |   .1079658   .0003098   348.56   0.000     .1073587    .1085729
+     expersq |  -.0020902   8.39e-06  -249.10   0.000    -.0021067   -.0020738
+       _cons |   7.290563   .0059007  1235.54   0.000     7.278998    7.302128
+------------------------------------------------------------------------------
+
+</code></pre>
+<p>Our output shows that years of education, potential experience, and squared potential experience are all postitively associated with logged earnings. These relationships are statistically significant at the $\alpha$ = .001 level.</p>
+<p>Since our dependent variable is log-transformed, we need to interepret these coefficiens somewhat differently. Here, a one-unit increase in $\ x$ is equal to $\ 100 * (e^{\beta}-1)$ percent change in earnings. Using this, we can interpret the coefficiens as follows:</p>
+<ul>
+<li>A one-unit increase in years of education is associated with a 15.2 percent increase in income, holding experience constant.</li>
+<li>A one-unit increase in years of potential experience is associated with a 11.4 percent increase in income, holding years of education constant.</li>
+<li>The coefficient on our squared experience term is negative, meaning that the relationship between experience and income weakens with as a person gains more years of experience.</li>
+</ul>
+<p>Next, we&rsquo;ll run the same model but adding <strong>female</strong> as another independent variable.</p>
+<pre><code>. reg logearn educyears exper expersq female 
+
+      Source |       SS           df       MS      Number of obs   = 1,043,212
+-------------+----------------------------------   F(4, 1043207)   &gt;  99999.00
+       Model |  343249.667         4  85812.4169   Prob &gt; F        =    0.0000
+    Residual |  789447.715 1,043,207  .756750784   R-squared       =    0.3030
+-------------+----------------------------------   Adj R-squared   =    0.3030
+       Total |  1132697.38 1,043,211  1.08577975   Root MSE        =    .86991
+
+------------------------------------------------------------------------------
+     logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   educyears |   .1514408   .0003886   389.72   0.000     .1506792    .1522024
+       exper |    .104552   .0002992   349.40   0.000     .1039655    .1051385
+     expersq |  -.0019921   8.11e-06  -245.73   0.000     -.002008   -.0019762
+      female |  -.4736823   .0017121  -276.67   0.000    -.4770379   -.4703267
+       _cons |   7.406006   .0057107  1296.86   0.000     7.394813    7.417199
+------------------------------------------------------------------------------
+
+</code></pre>
+<p>We see here that being female is, sadly, associated with a         37.7 percent decrease in income, holding years of education and experience constant. This is signicant at the .001 level.</p>
+<p>Finally, we&rsquo;ll swap out <strong>female</strong> for <strong>immigrant</strong> in our model.</p>
+<pre><code>. reg logearn educyears exper expersq immigrant 
+
+      Source |       SS           df       MS      Number of obs   = 1,043,212
+-------------+----------------------------------   F(4, 1043207)   =  88006.90
+       Model |  285787.586         4  71446.8964   Prob &gt; F        =    0.0000
+    Residual |  846909.797 1,043,207  .811832931   R-squared       =    0.2523
+-------------+----------------------------------   Adj R-squared   =    0.2523
+       Total |  1132697.38 1,043,211  1.08577975   Root MSE        =    .90102
+
+------------------------------------------------------------------------------
+     logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   educyears |   .1437936   .0004088   351.77   0.000     .1429924    .1445948
+       exper |   .1074614   .0003104   346.22   0.000     .1068531    .1080697
+     expersq |  -.0020758   8.41e-06  -246.82   0.000    -.0020923   -.0020593
+   immigrant |   .0605832   .0025287    23.96   0.000     .0556271    .0655393
+       _cons |   7.258131   .0060524  1199.21   0.000     7.246269    7.269994
+------------------------------------------------------------------------------
+
+</code></pre>
+<p>Interestingly, being an immigrant appears to be associated with a slight increase of          6.2 percent in income, holding other variables constant.</p>

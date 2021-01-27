@@ -1,0 +1,83 @@
+<<dd_remove>>
+*********************************************************************													
+*	TITLE: 		Problem Set 1
+*	PROJECT:	Applied-Micro 									
+*	PURPOSE:							
+*	AUTHOR:		Mangan		
+*	CREATED:	2020_0120
+*	UPDATED: 	2020_
+*	CALLS UPON:	${rawdatapath}acs2007.dta
+*	CALLED BY:
+* 	PRODUCES: 							
+*	CONTENTS:
+*		0. Markdown settigns
+*		2. 
+*********************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	1. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+
+<<dd_version: 2>>
+<<dd_include: header.txt>>
+
+<<dd_remove>>
+*******************************
+*
+*	2. Open Data
+*
+*******************************
+<</dd_remove>>
+
+# Problem Set 1
+Course: ECON 8848  
+Author: Dan Mangan  
+Date: <<dd_display: c(current_date)>>
+
+## 1. Load and get to know the data
+
+First, I will load the dataset into memory and produce an overview of its contents using the **describe** command.
+
+~~~~
+<<dd_do>>
+use "${rawdatapath}acs2007.dta", clear 
+describe
+<</dd_do>>
+~~~~  
+
+This dataset <<dd_display: %12.0fc `r(N)'  >> has observations and <<dd_display: `r(k)'  >> variables. 
+
+The formatting of the variables appears to be okay, though I would probabaly recode a couple of them: 
+<ul>
+<li>I would rename "sex" to be "female" and recode it as 0=male and 1=female.</li>
+<li>Missingness in incwage seems to be coded as "99999" but should be ".".</li>
+</ul>
+
+Next, I summarize the dataset to examine each variable in more detail.
+
+~~~~
+<<dd_do>>
+su 
+<</dd_do>>
+~~~~  
+
+As noted above, there is strange coding for missigness in the incwage variable. Genreally
+to find odd coding issues for missing values, we can check min and max values.
+
+To find the range of **age**, we can summarize only that variable. 
+
+~~~~
+<<dd_do>>
+su age
+<</dd_do>>
+~~~~  
+
+We see here that the age variable ranges between <<dd_display: `r(min)'  >> and <<dd_display: `r(max)'  >> years.
+
+## 2. Getting the sample right
+

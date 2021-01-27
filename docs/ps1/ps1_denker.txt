@@ -1,0 +1,304 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 1
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 1
+*	CREATED: 	1/19/21
+*	UPDATED:  			
+*	TEAMMATES:	Michelle Doughty and Dan Mangan		
+*	CALLS UPON:	"acs2007.dta"
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+* 				 0A.	Start log
+* 				 0B: Set up globals
+*	 			1: Load Data, Basic Descrips, & Sample Restrictions
+*		 		 1A: How many obs. and how many vars does this dataset contain?
+*		 		 1B: Are all of the vars stored in proper format? 
+*		 		 1C: Summarize and answer three questions
+*	 			2: Create New Vars
+*		 		 2A: Stata reminds you that prev. command 
+*					 resulted in missing vals. Why?
+*	 			3: Basic Analysis
+*		 		 3A: What can you learn from this reg output? 
+*		 		 3B: Interpret coefficient on the "female" var
+*		 		 3C: Interpret results for "immigrant" coefficient
+*	 			4: Close Log
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+	***Set cd for header.txt file to run
+	cd "/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/9. Markdown Files/"
+<</dd_do>>
+<</dd_remove>>
+
+
+<<dd_version: 1 >>
+<<dd_include: header.txt >>
+
+<<dd_remove>>
+<<dd_do>>	
+	***
+	*
+	* 	0: Set pathways, log, globals
+	*
+	***	
+		
+		glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+		glob logpath		"${projectpath}2. Assignments/PSET Logs/" 
+		glob datapath 		"${projectpath}5. Datasets/"
+		glob gendatapath 	"${projectpath}7. Generated Datasets/" 		
+		glob outputpath 	"${projectpath}8. Figures and Tables/" 	
+		glob csspath		"${projectpath}9. Markdown Files/"
+		
+		***
+		* 	0B: Set up globals
+		***		
+<</dd_do>>
+<</dd_remove>>
+
+
+# Problem Set 1  
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty & Dan Mangan  
+Date: <<dd_display: c(current_date)>>  
+
+## 1. Load Data, Examine Data, & Restrict Sample  
+
+~~~~
+<<dd_do>>
+	***Load Data for Analysis 
+	use "${datapath}acs2007.dta", clear	
+
+	***Run command that gives basic info about dataset (#obs, vars, storing)
+	describe
+<</dd_do>>
+~~~~
+
+
+### 1A. How many obs. and how many vars does this dataset contain?  
+The dataset has <<dd_display: %12.0fc `r(N)'>> observations and 14 variables.
+
+
+### 1B. Are all of the variables stored in the proper format?  
+All of the variables appear to be ready for analysis as the variables we would
+expect to be numeric are not coded as strings. I like to compress the data so 
+all variables are stored as efficiently as possible.  
+~~~~
+<<dd_do>>
+	compress
+<</dd_do>>
+~~~~
+
+### 1C. Do you see any strange coding of missing or top-coded variables, such as negative values or very high values (e.g. 999999)? 
+~~~~
+<<dd_do>>
+	su
+<</dd_do>>
+~~~~
+
+We notice that sex is coded as "1" or "2", and we would want
+to recode this variable to equal either 0 or 1 for analysis since doing so will
+make analysis using this variable easier. This variable will be recoded below.
+
+Additionally, there is one variable "incwage" that seems to indicate
+missingness with the code 999999. Although this isn't required for the PSET, 
+I'm going to replace missing values in this var with the "." Stata 
+recognizes as missing. 
+~~~~
+<<dd_do>>
+***Replacing missing values with . in incwage
+	su incwage, detail
+	replace incwage=. if incwage==999999
+<</dd_do>>
+~~~~
+
+### 1D. Which parts of the summary results are most useful for determining whether you need to recode missing values?
+The minimum and the maximum values are the most useful results for recoding. 
+
+
+### 1E. What is the age range in your sample?
+<<dd_remove>>
+<<dd_do>>
+	su age, detail	
+<</dd_do>>
+<</dd_remove>>
+
+The age range in the sample is <<dd_display: %4.0f `r(min)'>> to
+<<dd_display: %4.0f `r(max)'>>.
+
+### 1F. Restrict the Sample to Employed People of Working Age
+~~~~
+<<dd_do>>
+***Eliminate obs who are younger than 18 and older than 55
+	drop if age<18 | age>55
+	sum age, detail	
+	// check to ensure drop worked correctly
+	***Eliminate obs who are not employed
+	tab empstat
+	tab empstat, nolab 
+	// determine which value reps. "employed"; could also codebook this var to figure this out...
+	keep if	empstat==1
+	tab empstat, mi
+	// check to make sure only employed obs were kept. 
+<</dd_do>>
+~~~~						
+			
+## 2. Create New Vars  
+~~~~
+<<dd_do>>
+	***Create dummy called "female" where 1=female and 0=male
+	cap drop female
+	recode sex (2=1) (1=0), gen(female)
+	***Add value labels to female var
+	lab def female_lab 1 "1= female" 0 "0= male", replace
+	lab val female female_lab
+	lab var female "Gender dum: 1= female 0= male"
+	***Tab female var to check value labels & coded correctly
+	tab female sex, mi
+	***Create dummy var called "immigrant" where 1=immigrant 0=US born
+	browse bpl yrsusa1 
+/*
+bpl includes countries of birth & US states of birth yrsusa1=0 if person born in USA >=1 if foreign born easier to use yrsusa1 to create immigrant dummy
+I also want to figure out what the max val is for foreign-born country categories to use in recoding below
+*/	
+					   
+	sum yrsusa1		   			   
+	cap drop immigrant
+	recode yrsusa1 (1/56=1), gen(immigrant)	
+	***Add value labels to values of immigrant var
+	lab def immigrant_lab 1 "1= immigrant" 0 "0= US born", replace
+	lab val immigrant immigrant_lab	 
+	lab var immigrant "Immigrant dum: 1= immigrant 0= US born"		
+	***Check that immigrant was coded correctly
+	bysort immigrant: tab immigrant yrsusa1, mi
+			
+	***Use recode to create new variable called "educyears" where...
+	/*
+		No schooling, none, preschool =0 
+		Grade 1-4 =2.5 
+		Grade 5-8 =6.5
+		Grade   9 =9
+		Grade  10 =10
+		Grade  11 =11
+		Grade  12 =12
+		1-3 yrs college =14
+		4+ yrs college =16	
+	*/
+				
+	***Check numbering of categories of edurec var
+	tab educrec
+	tab educrec, nolab
+	cap drop educyears
+	recode   educrec (1=0) (2=2.5) (3=6.5) (4=9) (5=10) (6=11) (7=12) (8=14) (9=16), gen(educyears)
+	//Can't add value labels to these values as is because they include decimals. 		
+
+	***Label var educyears
+	lab var educyears "Education in years"	  
+	***Check that educyears was coded correctly
+	tab educrec educyears, mi
+	***Create var called "exper"=age-educyears-6
+	cap drop exper
+	generate exper=age-educyears-6	
+	***Check subset of sample to make sure exper was coded correctly. 
+	forvalues x = 0 9 to 11 {
+		browse age educyears exper if educyears==`x'
+			*di in red "Check that age + educyears + 6 = exper, then q to cont."
+			*pause	
+	} // closes forvalues x loop 			
+	***Label new "exper" var "Potential Experience"
+	lab var exper "Potential Experience"	
+/*
+"Exper" has negative values in the minimums, which maybe we would want to change to zero, but I'm going to leave it as is for this assignemnt. 
+*/								
+	***Create var called "expersq" that is the square of the person's potential experience
+	cap drop expersq
+	generate expersq=(exper)^2
+	browse exper expersq
+	***Label "expersq" var
+	lab var expersq "Potential Experience Squared"
+	***Create var "logearn"= natural log of wage and salary (incwage)
+	cap drop logearn
+	generate logearn=ln(incwage)
+<</dd_do>>
+~~~~
+
+
+### 2A. Stata reminds you that prev. command resulted in missing vals. Why were these created?
+The missing values in "logearn" result from observations where "incwage" is equal to 0 or missing. 
+
+~~~~
+<<dd_do>>
+	***Lab logearn var
+	lab var logearn "Log of Annual Earnings"
+	***Save Generated Dataset
+	compress
+	save "${gendatapath}acsrecoded.dta", replace
+<</dd_do>>			
+~~~~
+				
+## 3. Basic Analysis		
+	
+~~~~
+<<dd_do>>
+	***Run regression w y=logearn controlling for educyears exper expersq
+	glob xvars "educyears exper expersq"
+	su $xvars
+	reg logearn $xvars
+<</dd_do>>
+~~~~
+### 3A. What can you learn from this reg output? 
+For every additional year of potential experience a person has, we would 
+expect to see about a 12% positive difference in a person's wage and salary 
+income controlling for years of education. This difference is statistically
+significant at the p<0.001 level. Expsq... Educyears...
+
+
+### 3B. Interpret coefficient on the "female" var
+~~~~
+<<dd_do>>
+	***Run regression: y=logearn controlling for educyears exper expersq and female		
+	reg logearn $xvars female
+<</dd_do>>			
+~~~~
+When we control for gender, we see that there for an additional year of 
+potential experience, we would still expect to see about a 12% positive 
+difference in a person's wage and salary when we alos control for years 
+of education. However, we see that being female is associated with about 
+a 51% negative difference in a person'a wage and salary when  
+controlling for years of education and potential experience. 
+	
+
+### 3C. Interpret results for "immigrant" coefficient	
+~~~~
+<<dd_do>>	
+	***Run reg: logearn=y controlling for educyears exper expersq and immigrant
+	reg logearn $xvars immigrant
+<</dd_do>>			
+~~~~			
+Being an immigrant is associated with a 9% positive difference in a person's 
+wage and salary when we control for years of education, gender, and potential 
+experience relative to being US born. 
+
+		
+
+
+
+
+
