@@ -44,6 +44,7 @@
 
 	***Set cd for header.txt file to run
 	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps1/"
+	*
 
 <</dd_do>>
 <</dd_remove>>
