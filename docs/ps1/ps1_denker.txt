@@ -43,13 +43,15 @@
 	set memory 500m, perm // ignored in Stata. See Stata result window. 
 
 	***Set cd for header.txt file to run
-	cd "/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/9. Markdown Files/"
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps1/"
+
 <</dd_do>>
 <</dd_remove>>
 
 
 <<dd_version: 1 >>
 <<dd_include: header.txt >>
+	<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
 
 <<dd_remove>>
 <<dd_do>>	
@@ -93,7 +95,7 @@ Date: <<dd_display: c(current_date)>>
 
 
 ### 1A. How many obs. and how many vars does this dataset contain?  
-The dataset has <<dd_display: %12.0fc `r(N)'>> observations and 14 variables.
+The dataset has <<dd_display: %12.0fc `r(N)'>> observations and <<dd_display: `r(k)'  >> variables.
 
 
 ### 1B. Are all of the variables stored in the proper format?  
