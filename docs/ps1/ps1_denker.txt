@@ -356,7 +356,7 @@ Unfortunately, this estimate is significant at p<.001 level.
 	***Run reg: logearn=y controlling for educyears exper expersq and immigrant
 	reg logearn $xvars immigrant
 <</dd_do>>			
-~~~~	
+~~~~
 
 Being an immigrant is associated with a <<dd_display: %12.1fc 100*(exp(_b[immigrant])-1)  >> percent
 positive difference in a person's wage and salary when we control for years of education, gender, 
