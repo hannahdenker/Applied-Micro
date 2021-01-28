@@ -353,7 +353,7 @@ Unfortunately, this estimate is significant at p<.001 level.
 
 ~~~~
 <<dd_do>>	
-	***Run reg: logearn=y controlling for educyears exper expersq and immigrant
+	***Run reg: logearn=y controlling for educyears exper expersq and immigrant**
 	reg logearn $xvars immigrant
 <</dd_do>>			
 ~~~~
