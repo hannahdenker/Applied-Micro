@@ -555,12 +555,25 @@ file /Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/7. G
 </code></pre>
 <p>When we control for gender, we see that being female is associated with about a         37.7 percent negative difference in a person&rsquo;a wage and salary when  controlling for years of education and potential experience. Unfortunately, this estimate is significant at p&lt;.001 level.</p>
 <p><strong>Interpret results for &ldquo;immigrant&rdquo; coefficient</strong></p>
-<p>.         ***Run reg: logearn=y controlling for educyears exper expersq and immigrant .         reg logearn $xvars immigrant</p>
-<pre><code>  Source |       SS           df       MS      Number of obs   = 1,043,212
+<pre><code>.         ***Run reg: logearn=y controlling for educyears exper expersq and immigrant
+.         reg logearn $xvars immigrant
+
+      Source |       SS           df       MS      Number of obs   = 1,043,212
+-------------+----------------------------------   F(4, 1043207)   =  88037.37
+       Model |  285861.576         4   71465.394   Prob &gt; F        =    0.0000
+    Residual |  846835.807 1,043,207  .811762006   R-squared       =    0.2524
+-------------+----------------------------------   Adj R-squared   =    0.2524
+       Total |  1132697.38 1,043,211  1.08577975   Root MSE        =    .90098
+
+------------------------------------------------------------------------------
+     logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   educyears |   .1439266   .0004086   352.20   0.000     .1431256    .1447275
+       exper |   .1074078   .0003104   346.02   0.000     .1067994    .1080162
+     expersq |  -.0020745   8.41e-06  -246.65   0.000     -.002091    -.002058
+   immigrant |   .0646707   .0025074    25.79   0.000     .0597562    .0695852
+       _cons |     7.2559     .00605  1199.32   0.000     7.244042    7.267757
+------------------------------------------------------------------------------
+
 </code></pre>
-<p>&mdash;&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;-   F(4, 1043207)   =  88037.37 Model |  285861.576         4   71465.394   Prob &gt; F        =    0.0000 Residual |  846835.807 1,043,207  .811762006   R-squared       =    0.2524 &mdash;&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;-   Adj R-squared   =    0.2524 Total |  1132697.38 1,043,211  1.08577975   Root MSE        =    .90098</p>
-<hr />
-<pre><code> logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
-</code></pre>
-<h2><a href="#-educyears-1439266-0004086-35220-0000-1431256-1447275exper-1074078-0003104-34602-0000-1067994-1080162expersq-0020745-841e-06-24665-0000-002091-002058immigrant-0646707-0025074-2579-0000-0597562-0695852-cons-72559-00605-119932-0000-7244042-7267757" id="-educyears-1439266-0004086-35220-0000-1431256-1447275exper-1074078-0003104-34602-0000-1067994-1080162expersq-0020745-841e-06-24665-0000-002091-002058immigrant-0646707-0025074-2579-0000-0597562-0695852-cons-72559-00605-119932-0000-7244042-7267757">&mdash;&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;- educyears |   .1439266   .0004086   352.20   0.000     .1431256    .1447275 exper |   .1074078   .0003104   346.02   0.000     .1067994    .1080162 expersq |  -.0020745   8.41e-06  -246.65   0.000     -.002091    -.002058 immigrant |   .0646707   .0025074    25.79   0.000     .0597562    .0695852 _cons |     7.2559     .00605  1199.32   0.000     7.244042    7.267757</a></h2>
 <p>Being an immigrant is associated with a          6.7 percent positive difference in a person&rsquo;s wage and salary when we control for years of education, gender, and potential experience relative to being US born.</p>
