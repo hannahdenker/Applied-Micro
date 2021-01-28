@@ -309,7 +309,8 @@ continue that practice here and put this new dataset in a separate folder.
 We are going to run a regression with "logearn" as the dependent variable 
 while controlling for "educyears" "exper" "expersq". I'm going to create
 a global to contain the set of independent variables used in this and the 
-following regressions. 
+following regressions. Note: I exponentiate each $\beta$ and subtract 1 in 
+my interpretations of each coefficient. 
 
 ~~~~
 <<dd_do>>

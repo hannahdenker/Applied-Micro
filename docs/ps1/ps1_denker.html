@@ -545,7 +545,7 @@ file /Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/7. G
 
 </code></pre>
 <h2><a href="#3-basic-analysis" id="3-basic-analysis">3. Basic Analysis</a></h2>
-<p>We are going to run a regression with &ldquo;logearn&rdquo; as the dependent variable while controlling for &ldquo;educyears&rdquo; &ldquo;exper&rdquo; &ldquo;expersq&rdquo;. I&rsquo;m going to create a global to contain the set of independent variables used in this and the following regressions.</p>
+<p>We are going to run a regression with &ldquo;logearn&rdquo; as the dependent variable while controlling for &ldquo;educyears&rdquo; &ldquo;exper&rdquo; &ldquo;expersq&rdquo;. I&rsquo;m going to create a global to contain the set of independent variables used in this and the following regressions. Note: I exponentiate each $\beta$ and subtract 1 in my interpretations of each coefficient.</p>
 <pre><code>.         glob xvars &quot;educyears exper expersq&quot;
 
 .         su $xvars
