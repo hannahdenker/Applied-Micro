@@ -65,14 +65,14 @@
 <<dd_version: 1>>
 <<dd_include: header.txt>>
 
-<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
-
 
 # Problem Set 1  
 Course: ECON 8848  
 Author: Hannah Denker  
 Collaborators: Michelle Doughty, Rimjhim Saxana, & Dan Mangan  
 Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
 
 ## 1. Load Data, Examine Data, & Restrict Sample  
 
