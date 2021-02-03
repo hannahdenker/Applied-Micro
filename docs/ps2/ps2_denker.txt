@@ -1,0 +1,324 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 2
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 1
+*	CREATED: 	02/01/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty, Rimjhim Saxana, and Dan Mangan		
+*	CALLS UPON:	"birthweight.dta"
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+	***Set cd for header.txt file to run & opens the folder in Git for this
+	***PSET
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps2/"
+
+		***
+		* 	0B: Set up globals
+		***		
+			glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+			glob datapath 		"${projectpath}5. Datasets/"
+
+<</dd_do>>
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 2  
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty, Rimjhim Saxana, & Dan Mangan  
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+## RQ: Does smoking affect birthweight? 
+It's helpful to understand that each observation in this dataset represents 
+a newborn. 
+
+
+<<dd_remove>>
+*******************************
+*
+*	1. Load Data & Variable Creation
+*
+*******************************
+<</dd_remove>>
+
+## 1. Getting Started 
+
+In this section of code, I load the dataset and create a global to store key
+variables I want to know more about. I also make two new analytic variables--
+a dummy to represent whether or not the mother smoked, and a dummy to represent
+whether or not the newborn's family's income was above the median income in this sample. 
+
+I label these new variables and their values to keep their meanings clear in 
+later analysis. 
+
+~~~~
+<<dd_do>>
+	***Load Data for Analysis 
+	use "${datapath}birthweight.dta", clear	
+	***Create global to store varnames
+	glob desc_vars "bwght packs faminc fatheduc motheduc parity male white"
+
+	***Run command that gives basic info about dataset (#obs, vars, storage)
+	describe
+
+	***Create a dummy var named "smoker" where 1= mother is smoker and 0= mother not smoker
+	tab cigs, mi
+	cap drop smoker
+	generate smoker=.
+	replace  smoker=1 if cigs>0 & cigs<.
+	replace  smoker=0 if cigs==0
+	tab cigs smoker, mi
+
+	**Add value and variable labels to smoker var
+	cap lab drop smoker_lab
+	lab def smoker_lab 0 "0= Mom d/n Smoke" 1 "1= Mom Smoked"
+	lab val smoker smoker_lab
+	lab var smoker "dum: =1 if mom smoked at all"
+
+	***Run command to produce median value of family income to be used in 
+	***dummy variable creation below.
+	qui su faminc, det
+
+	***Use internal return from "sum" command to create a dummy var that represents 
+	***families with high incomres: 1= family income >= median; and 0= family income below median
+	cap drop highinc_dum
+	generate highinc_dum=. 
+	replace  highinc_dum=1 if faminc>=`r(p50)' & faminc<. 
+	replace  highinc_dum=0 if faminc<`r(p50)'
+	tab highinc_dum, mi
+
+	**Add value and variable labels to hifhinc_dum var
+	cap lab drop highinc_dum_lab
+	lab def highinc_dum_lab 0 "0= FamInc Below Median" 1 "1= FamInc Above Median"
+	lab val highinc_dum highinc_dum_lab
+	lab var highinc_dum "dum: =1 if family inc above median"
+
+	qui compress 
+<</dd_do>>
+~~~~
+
+
+<<dd_remove>>
+*******************************
+*
+*	2. Creating Descriptive Tables
+*
+*******************************
+<</dd_remove>>
+
+## 2. Descriptive Statistics
+
+We want to calculate descriptive statistics for variables that might
+help us answer our research question. I am going to use the <code>tabstat</code>
+command to make a table with the "mean, median, standard deviation, and 
+number of valid observations" using the variables in the global "desc_vars" I created above.
+
+~~~~
+<<dd_do>>
+tabstat $desc_vars, statistics(mean median sd count) format(%9.1g)
+<</dd_do>>
+~~~~
+
+**What do you notice in this table that you might want to report to your audience?**
+
+The first thing I notice from the results is that we are missing about 200 observations 
+in the variable "fatheduc", but only one observation in "motheduc". 
+
+Next, I'm noticing that the mean and median are relatively close for the "bwght" variables, 
+which makes me think that this variable is distributed normally. Relatedly, since the median 
+of the "packs" variable is 0, we can assume that this variable would be positively-skewed.
+
+While the previously mentioned points are important to me, the researcher, I'm not sure I would 
+report them to my audience. Usually, we like to share demographics with our audience, so I think
+making a table with the means of the "bwght", "male" and "white" variables would help our audience 
+understand the newborns in this sample. 
+
+I would also point out that most of the parents in this sample have at least a high school degree. 
+
+It might be helpful to create a new table of descriptive statistics that 
+separates smokers from the non-smokers in our sample. We will use the 
+<code>by</code> option to accomplish this with the <code>tabstat</code> command. 
+
+~~~~
+<<dd_do>>
+sort smoker
+tabstat $desc_vars, c(s) statistics(mean median sd count) by(smoker) longstub format(%9.1g)
+<</dd_do>>
+~~~~
+
+**Are there substantial differences in the characteristics of smokers and non-smokers?**
+<ul>
+<li>There is a substantial difference in the number of observations between the two groups (about
+1200 newborns were born to mothers who didn't smoke and about 200 newborns were born to mothers 
+who did smoke).</li> 
+<li>Parents that included a mother who smoked were slightly less likely to have graduated 
+high school, and parents that included a mother who did not smoke were slightly more likely to have some 
+education after high school.</li> 
+<li>Importantly, the family income of parents that include non-smoking mothers is about $10,000 more
+dollars than the incomes of families that have a mother who smokes.</li> 
+<li>Finally, babies born to non-smoking mothers weigh about 1/2lb more at birth than those born to mothers 
+who smoke.</li> 
+</ul>
+
+**Based on these results, would you feel comfortable calling the raw (unadjusted) differences in birthweight the "causal effect of smoking?" Why?**  
+No, we would not be comfortable calling these differences the "causal effect of smoking" because 
+we are still concerned about isolating the variation in the treatment (here, smoking or not smoking during pregnancy) 
+from other factors that are correlated with both treatment status (smoking) and 
+the outcome of interest (here, birthweight). For example, family income could be a confounder that affects
+both the dependent and independent variables of interest.
+
+Because of this, let's make a cross tabulation of the smoker dummy and the 
+high income dummy including row percentages instead of frequencies. 
+
+~~~~
+<<dd_do>>
+tab smoker highinc_dum, row nofreq
+<</dd_do>>
+~~~~
+**What would you conclude from this cross-tab?**  
+Among families where the mother smoked during pregnancy, almost 
+68% had a family income below the median of the whole sample. This 
+is quite different when compared to the group of families where the 
+mother did not smoke during pregnancy. Among this group of mothers, 
+only about 45% of the families had a family income below the median 
+of the whole sample. 
+
+
+## 3. Graph
+To understand the underlying distribution of the variable that 
+describes how many cigarettes mothers smoked while pregnant, 
+we are going to make a histogram of the "cigs" variable. 
+~~~~
+<<dd_do>>
+
+***We'll change the label of this variable first so 
+***our histogram axis label makes more sense. 
+lab var cigs "# Cigarettes/Day While Pregnant"
+qui su cigs, det
+hist cigs, freq addlabel ///
+	title(Distribution of Cigarettes Smoked per Day While Pregnant) ///
+	subtitle(Using Full Sample) ///
+	xtitle("Number of Cigarettes per Day") ///
+	ytitle("Number of Mothers") ///				
+	start(0) ///
+	width(5) ///
+	xlabel(0(5)50) ///
+	ylabel(0(300)1500, angle(horizontal)) ///
+	text(1250 35 "Mean= `: di %6.1f r(mean)'", place(ne)) ///
+	text(1190 35 "SD= `: di %6.1f r(sd)'", place(ne)) ///				
+	fcolor(edkblue) lcolor(black) ///
+	name("cigs_hist", replace)		
+<</dd_do>>
+~~~~
+<<dd_graph: saving("cigs.hist.png") alt("hist cigs, freq") replace height(400)>>
+
+**What observations do you have for this distribution?**  
+Maybe people rounded in response to the survey? Cigs come 
+
+Since the number of cigarettes associated with non-smokers 
+makes the histogram hard to read for smokers, we are going to 
+make a second histogram only including observations where 
+"cigs!=0". 
+
+~~~~
+<<dd_do>>
+qui su cigs if cigs!=0, det
+hist cigs if cigs!=0, freq addlabel ///
+	title(Distribution of Cigarettes Smoked per Day While Pregnant) ///
+	subtitle(Using Sub-Sample of Smokers) ///
+	xtitle("Number of Cigarettes per Day") ///
+	ytitle("Number of Mothers") ///				
+	start(0) ///
+	width(5) ///
+	xlabel(0(5)50) ///
+	ylabel(0(10)70, angle(horizontal)) ///
+	text(60 35 "Mean= `: di %6.1f r(mean)'", place(ne)) ///
+	text(57 35 "SD= `: di %6.1f r(sd)'", place(ne)) ///				
+	fcolor(edkblue) lcolor(black) ///
+	name("cigs_hist2", replace)		
+<</dd_do>>
+~~~~
+<<dd_graph: saving("cigs.hist2.png") alt("hist cigs, freq") replace height(400)>>
+
+We also want to make a histogram to see the distribution of the "parity" 
+variable. 
+
+~~~~
+<<dd_do>>
+lab var parity "Child's Birth Order"
+hist parity, freq addlabel ///
+	title(Distribution of Child's Birth Order) ///
+ 	xtitle("Birth Order Position") ///
+	ytitle("Number of Children") ///				
+	start(0) ///
+	width(1) ///
+	xlabel(1(1)6) ///
+	ylabel(0(200)800, angle(horizontal)) ///
+	fcolor(edkblue) lcolor(black) ///
+	name("parity_hist", replace)			
+<</dd_do>>
+~~~~
+<<dd_graph: saving("parity.hist.png") alt("hist parity, freq") replace height(400)>>
+
+It will be helpful to create a single graph with two histograms 
+comparing mother's education for smokers and non-smokers. 
+
+~~~~
+<<dd_do>>
+forvalues i=0/1 {
+hist motheduc if cigs!=`i', freq  ///
+	title(Distribution of Mother's Education) ///
+	subtitle(Among Smokers) ///
+ 	xtitle("Mother's Education in Years") ///
+	ytitle("Number of Mothers") ///				
+	start(0) ///
+	width(5) ///
+	xlabel(0(5)50) ///
+	ylabel(0(300)1500, angle(horizontal)) ///
+	text(825 6 "Mean= `: di %6.1f r(mean)'", place(ne)) ///
+	text(750 6 "SD= `: di %6.1f r(sd)'", place(ne)) ///				
+	fcolor(edkblue) lcolor(black) ///
+	name("mothered_hist_cig`i'", replace)	
+}			
+<</dd_do>>
+~~~~
+<<dd_graph: saving("parity.hist.png") alt("hist parity, freq") replace height(400)>>
+
+
+## 4. Regression Tables
+
+reg 
+
+

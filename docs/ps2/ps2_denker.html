@@ -1,0 +1,416 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    htmlTableOfContents();
+} );                        
+
+function htmlTableOfContents( documentRef ) {
+    var documentRef = documentRef || document;
+    var toc = documentRef.getElementById("toc");
+//  Use headings inside <article> only:
+//  var headings = [].slice.call(documentRef.body.querySelectorAll('article h1, article h2, article h3, article h4, article h5, article h6'));
+    var headings = [].slice.call(documentRef.body.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach(function (heading, index) {
+        var ref = "toc" + index;
+        if ( heading.hasAttribute( "id" ) ) 
+            ref = heading.getAttribute( "id" );
+        else
+            heading.setAttribute( "id", ref );
+
+        var link = documentRef.createElement( "a" );
+        link.setAttribute( "href", "#"+ ref );
+        link.textContent = heading.textContent;
+
+        var div = documentRef.createElement( "div" );
+        div.setAttribute( "class", heading.tagName.toLowerCase() );
+        div.appendChild( link );
+        toc.appendChild( div );
+    });
+}
+
+
+try {
+    module.exports = htmlTableOfContents;
+} catch (e) {
+    // module.exports is not defined
+}
+</script>
+</head>
+<h1><a href="#problem-set-2" id="problem-set-2">Problem Set 2</a></h1>
+<p>Course: ECON 8848<br />
+Author: Hannah Denker<br />
+Collaborators: Michelle Doughty, Rimjhim Saxana, &amp; Dan Mangan<br />
+Date:  3 Feb 2021</p>
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+<h2><a href="#rq-does-smoking-affect-birthweight" id="rq-does-smoking-affect-birthweight">RQ: Does smoking affect birthweight?</a></h2>
+<p>It&rsquo;s helpful to understand that each observation in this dataset represents a newborn.</p>
+<h2><a href="#1-getting-started" id="1-getting-started">1. Getting Started</a></h2>
+<p>In this section of code, I load the dataset and create a global to store key variables I want to know more about. I also make two new analytic variables&ndash; a dummy to represent whether or not the mother smoked, and a dummy to represent whether or not the newborn&rsquo;s family&rsquo;s income was above the median income in this sample.</p>
+<p>I label these new variables and their values to keep their meanings clear in later analysis.</p>
+<pre><code>.         ***Load Data for Analysis 
+.         use &quot;${datapath}birthweight.dta&quot;, clear 
+
+.         ***Create global to store varnames
+.         glob desc_vars &quot;bwght packs faminc fatheduc motheduc parity male white
+&gt; &quot;
+
+. 
+.         ***Run command that gives basic info about dataset (#obs, vars, storag
+&gt; e)
+.         describe
+
+Contains data from /Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/
+&gt; MicroEcon/5. Datasets/birthweight.dta
+  obs:         1,388                          
+ vars:            14                          6 Oct 2008 13:39
+ size:        77,728                          
+--------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+--------------------------------------------------------------------------------
+faminc          float   %9.0g                 1988 family income, $1000s
+cigtax          float   %9.0g                 cig. tax in home state, 1988
+cigprice        float   %9.0g                 cig. price in home state, 1988
+bwght           float   %9.0g                 birth weight, ounces
+fatheduc        float   %9.0g                 father's yrs of educ
+motheduc        float   %9.0g                 mother's yrs of educ
+parity          float   %9.0g                 birth order of child
+male            float   %9.0g                 =1 if male child
+white           float   %9.0g                 =1 if white
+cigs            float   %9.0g                 cigs smked per day while preg
+lbwght          float   %9.0g                 log of bwght
+bwghtlbs        float   %9.0g                 birth weight, pounds
+packs           float   %9.0g                 packs smked per day while preg
+lfaminc         float   %9.0g                 log(faminc)
+--------------------------------------------------------------------------------
+Sorted by: 
+
+. 
+.         ***Create a dummy var named &quot;smoker&quot; where 1= mother is smoker and 0= 
+&gt; mother not smoker
+.         tab cigs, mi
+
+ cigs smked |
+    per day |
+ while preg |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |      1,176       84.73       84.73
+          1 |          3        0.22       84.94
+          2 |          4        0.29       85.23
+          3 |          7        0.50       85.73
+          4 |          9        0.65       86.38
+          5 |         19        1.37       87.75
+          6 |          6        0.43       88.18
+          7 |          4        0.29       88.47
+          8 |          5        0.36       88.83
+          9 |          1        0.07       88.90
+         10 |         55        3.96       92.87
+         12 |          5        0.36       93.23
+         15 |         19        1.37       94.60
+         20 |         62        4.47       99.06
+         30 |          5        0.36       99.42
+         40 |          6        0.43       99.86
+         46 |          1        0.07       99.93
+         50 |          1        0.07      100.00
+------------+-----------------------------------
+      Total |      1,388      100.00
+
+.         cap drop smoker
+
+.         generate smoker=.
+(1,388 missing values generated)
+
+.         replace  smoker=1 if cigs&gt;0 &amp; cigs&lt;.
+(212 real changes made)
+
+.         replace  smoker=0 if cigs==0
+(1,176 real changes made)
+
+.         tab cigs smoker, mi
+
+cigs smked |
+   per day |        smoker
+while preg |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     1,176          0 |     1,176 
+         1 |         0          3 |         3 
+         2 |         0          4 |         4 
+         3 |         0          7 |         7 
+         4 |         0          9 |         9 
+         5 |         0         19 |        19 
+         6 |         0          6 |         6 
+         7 |         0          4 |         4 
+         8 |         0          5 |         5 
+         9 |         0          1 |         1 
+        10 |         0         55 |        55 
+        12 |         0          5 |         5 
+        15 |         0         19 |        19 
+        20 |         0         62 |        62 
+        30 |         0          5 |         5 
+        40 |         0          6 |         6 
+        46 |         0          1 |         1 
+        50 |         0          1 |         1 
+-----------+----------------------+----------
+     Total |     1,176        212 |     1,388 
+
+. 
+.         **Add value and variable labels to smoker var
+.         cap lab drop smoker_lab
+
+.         lab def smoker_lab 0 &quot;0= Mom d/n Smoke&quot; 1 &quot;1= Mom Smoked&quot;
+
+.         lab val smoker smoker_lab
+
+.         lab var smoker &quot;dum: =1 if mom smoked at all&quot;
+
+. 
+.         ***Run command to produce median value of family income to be used in 
+.         ***dummy variable creation below.
+.         qui su faminc, det
+
+. 
+.         ***Use internal return from &quot;sum&quot; command to create a dummy var that r
+&gt; epresents 
+.         ***families with high incomres: 1= family income &gt;= median; and 0= fam
+&gt; ily income below median
+.         cap drop highinc_dum
+
+.         generate highinc_dum=. 
+(1,388 missing values generated)
+
+.         replace  highinc_dum=1 if faminc&gt;=`r(p50)' &amp; faminc&lt;. 
+(711 real changes made)
+
+.         replace  highinc_dum=0 if faminc&lt;`r(p50)'
+(677 real changes made)
+
+.         tab highinc_dum, mi
+
+highinc_dum |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |        677       48.78       48.78
+          1 |        711       51.22      100.00
+------------+-----------------------------------
+      Total |      1,388      100.00
+
+. 
+.         **Add value and variable labels to hifhinc_dum var
+.         cap lab drop highinc_dum_lab
+
+.         lab def highinc_dum_lab 0 &quot;0= FamInc Below Median&quot; 1 &quot;1= FamInc Above 
+&gt; Median&quot;
+
+.         lab val highinc_dum highinc_dum_lab
+
+.         lab var highinc_dum &quot;dum: =1 if family inc above median&quot;
+
+. 
+.         qui compress 
+
+</code></pre>
+<h2><a href="#2-descriptive-statistics" id="2-descriptive-statistics">2. Descriptive Statistics</a></h2>
+<p>We want to calculate descriptive statistics for variables that might help us answer our research question. I am going to use the <code>tabstat</code> command to make a table with the &ldquo;mean, median, standard deviation, and number of valid observations&rdquo; using the variables in the global &ldquo;desc_vars&rdquo; I created above.</p>
+<pre><code>. tabstat $desc_vars, statistics(mean median sd count) format(%9.1g)
+
+   stats |     bwght     packs    faminc  fatheduc  motheduc    parity      male
+---------+----------------------------------------------------------------------
+    mean |       119        .1        29        13        13       1.6       .52
+     p50 |       120         0        28        12        12         1         1
+      sd |        20        .3        19       2.7       2.4       .89        .5
+       N |      1388      1388      1388      1192      1387      1388      1388
+--------------------------------------------------------------------------------
+
+   stats |     white
+---------+----------
+    mean |       .78
+     p50 |         1
+      sd |       .41
+       N |      1388
+--------------------
+
+</code></pre>
+<p><strong>What do you notice in this table that you might want to report to your audience?</strong></p>
+<p>The first thing I notice from the results is that we are missing about 200 observations in the variable &ldquo;fatheduc&rdquo;, but only one observation in &ldquo;motheduc&rdquo;.</p>
+<p>Next, I&rsquo;m noticing that the mean and median are relatively close for the &ldquo;bwght&rdquo; variables, which makes me think that this variable is distributed normally. Relatedly, since the median of the &ldquo;packs&rdquo; variable is 0, we can assume that this variable would be positively-skewed.</p>
+<p>While the previously mentioned points are important to me, the researcher, I&rsquo;m not sure I would report them to my audience. Usually, we like to share demographics with our audience, so I think making a table with the means of the &ldquo;bwght&rdquo;, &ldquo;male&rdquo; and &ldquo;white&rdquo; variables would help our audience understand the newborns in this sample.</p>
+<p>I would also point out that most of the parents in this sample have at least a high school degree.</p>
+<p>It might be helpful to create a new table of descriptive statistics that separates smokers from the non-smokers in our sample. We will use the <code>by</code> option to accomplish this with the <code>tabstat</code> command.</p>
+<pre><code>. sort smoker
+
+. tabstat $desc_vars, c(s) statistics(mean median sd count) by(smoker) longstub 
+&gt; format(%9.1g)
+
+smoker               variable |      mean       p50        sd         N
+------------------------------+----------------------------------------
+0= Mom d/n Smoke        bwght |       120       121        20      1176
+                        packs |         0         0         0      1176
+                       faminc |        30        28        19      1176
+                     fatheduc |        13        13       2.8      1031
+                     motheduc |        13        12       2.4      1175
+                       parity |       1.6         1        .9      1176
+                         male |       .53         1        .5      1176
+                        white |       .79         1       .41      1176
+------------------------------+----------------------------------------
+1= Mom Smoked           bwght |       111       112        19       212
+                        packs |       .68        .5       .43       212
+                       faminc |        21        19        15       212
+                     fatheduc |        12        12       2.2       161
+                     motheduc |        12        12       1.8       212
+                       parity |       1.7         1       .88       212
+                         male |       .47         0        .5       212
+                        white |       .78         1       .42       212
+------------------------------+----------------------------------------
+Total                   bwght |       119       120        20      1388
+                        packs |        .1         0        .3      1388
+                       faminc |        29        28        19      1388
+                     fatheduc |        13        12       2.7      1192
+                     motheduc |        13        12       2.4      1387
+                       parity |       1.6         1       .89      1388
+                         male |       .52         1        .5      1388
+                        white |       .78         1       .41      1388
+-----------------------------------------------------------------------
+
+</code></pre>
+<p><strong>Are there substantial differences in the characteristics of smokers and non-smokers?</strong></p>
+<ul>
+<li>There is a substantial difference in the number of observations between the two groups (about
+1200 newborns were born to mothers who didn't smoke and about 200 newborns were born to mothers 
+who did smoke).</li> 
+<li>Parents that included a mother who smoked were slightly less likely to have graduated 
+high school, and parents that included a mother who did not smoke were slightly more likely to have some 
+education after high school.</li> 
+<li>Importantly, the family income of parents that include non-smoking mothers is about $10,000 more
+dollars than the incomes of families that have a mother who smokes.</li> 
+<li>Finally, babies born to non-smoking mothers weigh about 1/2lb more at birth than those born to mothers 
+who smoke.</li> 
+</ul>
+<p><strong>Based on these results, would you feel comfortable calling the raw (unadjusted) differences in birthweight the &ldquo;causal effect of smoking?&rdquo; Why?</strong><br />
+No, we would not be comfortable calling these differences the &ldquo;causal effect of smoking&rdquo; because we are still concerned about isolating the variation in the treatment (here, smoking or not smoking during pregnancy) from other factors that are correlated with both treatment status (smoking) and the outcome of interest (here, birthweight). For example, family income could be a confounder that affects both the dependent and independent variables of interest.</p>
+<p>Because of this, let&rsquo;s make a cross tabulation of the smoker dummy and the high income dummy including row percentages instead of frequencies.</p>
+<pre><code>. tab smoker highinc_dum, row nofreq
+
+                 | dum: =1 if family inc
+  dum: =1 if mom |     above median
+   smoked at all | 0= FamInc  1= FamInc |     Total
+-----------------+----------------------+----------
+0= Mom d/n Smoke |     45.32      54.68 |    100.00 
+   1= Mom Smoked |     67.92      32.08 |    100.00 
+-----------------+----------------------+----------
+           Total |     48.78      51.22 |    100.00 
+
+</code></pre>
+<p><strong>What would you conclude from this cross-tab?</strong><br />
+Among families where the mother smoked during pregnancy, almost 68% had a family income below the median of the whole sample. This is quite different when compared to the group of families where the mother did not smoke during pregnancy. Among this group of mothers, only about 45% of the families had a family income below the median of the whole sample.</p>
+<h2><a href="#3-graph" id="3-graph">3. Graph</a></h2>
+<p>To understand the underlying distribution of the variable that describes how many cigarettes mothers smoked while pregnant, we are going to make a histogram of the &ldquo;cigs&rdquo; variable.</p>
+<pre><code>. 
+. ***We'll change the label of this variable first so 
+. ***our histogram axis label makes more sense. 
+. lab var cigs &quot;# Cigarettes/Day While Pregnant&quot;
+
+. qui su cigs, det
+
+. hist cigs, freq addlabel ///
+&gt;         title(Distribution of Cigarettes Smoked per Day While Pregnant) ///
+&gt;         subtitle(Using Full Sample) ///
+&gt;         xtitle(&quot;Number of Cigarettes per Day&quot;) ///
+&gt;         ytitle(&quot;Number of Mothers&quot;) ///                         
+&gt;         start(0) ///
+&gt;         width(5) ///
+&gt;         xlabel(0(5)50) ///
+&gt;         ylabel(0(300)1500, angle(horizontal)) ///
+&gt;         text(1250 35 &quot;Mean= `: di %6.1f r(mean)'&quot;, place(ne)) ///
+&gt;         text(1190 35 &quot;SD= `: di %6.1f r(sd)'&quot;, place(ne)) ///                 
+&gt;           
+&gt;         fcolor(edkblue) lcolor(black) ///
+&gt;         name(&quot;cigs_hist&quot;, replace)              
+(bin=10, start=0, width=5)
+
+</code></pre>
+<img src="cigs.hist.png" height="400" alt="hist cigs, freq" >
+<p><strong>What observations do you have for this distribution?</strong><br />
+ADD MY THOUGHTS</p>
+<p>Since the number of cigarettes associated with non-smokers makes the histogram hard to read for smokers, we are going to make a second histogram only including observations where &ldquo;cigs!=0&rdquo;.</p>
+<pre><code>. qui su cigs if cigs!=0, det
+
+. hist cigs if cigs!=0, freq addlabel ///
+&gt;         title(Distribution of Cigarettes Smoked per Day While Pregnant) ///
+&gt;         subtitle(Using Sub-Sample of Smokers) ///
+&gt;         xtitle(&quot;Number of Cigarettes per Day&quot;) ///
+&gt;         ytitle(&quot;Number of Mothers&quot;) ///                         
+&gt;         start(0) ///
+&gt;         width(5) ///
+&gt;         xlabel(0(5)50) ///
+&gt;         ylabel(0(10)70, angle(horizontal)) ///
+&gt;         text(60 35 &quot;Mean= `: di %6.1f r(mean)'&quot;, place(ne)) ///
+&gt;         text(57 35 &quot;SD= `: di %6.1f r(sd)'&quot;, place(ne)) ///                   
+&gt;           
+&gt;         fcolor(edkblue) lcolor(black) ///
+&gt;         name(&quot;cigs_hist2&quot;, replace)             
+(bin=10, start=0, width=5)
+
+</code></pre>
+<img src="cigs.hist2.png" height="400" alt="hist cigs, freq" >
+<p>We also want to make a histogram to see the distribution of the &ldquo;parity&rdquo; variable.</p>
+<pre><code>. 
+. ***We'll change the label of this variable first so 
+. ***our histogram axis label makes more sense. 
+. lab var parity &quot;Child's Birth Order&quot;
+
+. hist parity, freq addlabel ///
+&gt;         title(Distribution of Child's Birth Order) ///
+&gt;         xtitle(&quot;Birth Order Position&quot;) ///
+&gt;         ytitle(&quot;Number of Children&quot;) ///                                
+&gt;         start(0) ///
+&gt;         width(1) ///
+&gt;         xlabel(0(1)10) ///
+&gt;         ylabel(0(300)1500, angle(horizontal)) ///
+&gt;         text(1200 35 &quot;Mean= `: di %6.1f r(mean)'&quot;) ///
+&gt;         text(1190 35 &quot;SD= `: di %6.1f r(sd)'&quot;) ///                            
+&gt;   
+&gt;         fcolor(edkblue) lcolor(black) ///
+&gt;         name(&quot;parity_hist&quot;, replace)                    
+(bin=6, start=0, width=1)
+
+</code></pre>
+<img src="parity.hist.png" height="400" alt="hist parity, freq" >
+<p>It will be helpful to create a single graph with two histograms comparing mother&rsquo;s education for smokers and non-smokers.</p>
+<pre><code>. 
+. ***We'll change the label of this variable first so 
+. ***our histogram axis label makes more sense. 
+. hist motheduc if cigs!=0, freq  ///
+&gt;         title(Distribution of Mother's Education) ///
+&gt;         subtitle(Among Smokers)
+(bin=14, start=6, width=.85714286)
+
+. /*
+&gt;          ///
+&gt;         ///xtitle(&quot;Number of Cigarettes per Day&quot;) ///
+&gt;         ytitle(&quot;Number of Mothers&quot;) ///                         
+&gt;         start(0) ///
+&gt;         width(5) ///
+&gt;         xlabel(0(5)50) ///
+&gt;         ylabel(0(300)1500, angle(horizontal)) ///
+&gt;         text(825 6 &quot;Mean= `: di %6.1f r(mean)'&quot;, place(ne)) ///
+&gt;         text(750 6 &quot;SD= `: di %6.1f r(sd)'&quot;, place(ne)) ///                   
+&gt;           
+&gt;         fcolor(edkblue) lcolor(black) ///
+&gt;         name(&quot;cigs_hist&quot;, replace)                      
+&gt; &lt;&lt;/dd_do&gt;&gt;
+&gt; ~~~~
+&gt; &lt;&lt;dd_graph: saving(&quot;parity.hist.png&quot;) alt(&quot;hist parity, freq&quot;) replace height(
+&gt; 400)&gt;&gt;
+&gt; 
+&gt; 
+&gt; ## 4. Regression Tables
+&gt; 
+&gt; 
+&gt; 
+</code></pre>
