@@ -1,5 +1,4 @@
 <<dd_remove>>
-
 *Anything in between the dd_remove bits will be a comment that won't show
 *up in the Markdown document
 **************************************************************************
