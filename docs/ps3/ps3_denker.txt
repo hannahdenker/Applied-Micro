@@ -1,0 +1,551 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 3
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 3
+*	CREATED: 	02/13/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty, Rimjhim Saxana, and Dan Mangan		
+*	CALLS UPON:	Generates data needed
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+	***Set cd for header.txt file to run & opens the folder in Git for this
+	***PSET
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps3/"
+
+		***
+		* 	0B: Set up globals
+		***		
+			glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+			glob datapath 		"${projectpath}5. Datasets/"
+
+<</dd_do>>
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 3  
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty & Dan Mangan  
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+## RQ: Does smoking affect birthweight? 
+It's helpful to understand that each observation in this dataset represents 
+a newborn. 
+
+
+<<dd_remove>>
+*******************************
+*
+*	1. Drawing from Various Distributions
+*
+*******************************
+<</dd_remove>>
+
+## 1. Drawing from Various Distributions
+###1.1 Independent Draws
+
+In this section of code, I am going to draw variables for 10,000 observations from three
+different distributions. To check that they were created correctly, I will also make 
+histograms for each. 
+
+~~~~
+<<dd_do>>
+	***Set obs 
+	drop _all
+	set obs 10000
+	set seed 123456789
+
+	***Create var x1 from uniform distribution
+	cap drop x1
+	generate x1 = runiform(4,6)
+
+	***Create var x2 from normal distribution
+	cap drop x2
+	generate x2 = rnormal(3,2) // sigma^2=4, so using 2 in the "sd" spot here. 
+
+	***Create var x3 from truncated normal distribution
+	***We want positive values only, so pulling using .5 as starting point. 
+	cap drop x3
+	generate x3 = invnorm(runiform(.5,1))*3 // sigma^2=9. 
+
+	***Check each with histograms
+	forvalues i=1/3 {
+		qui su x`i', detail
+		local m=r(mean)
+		local sd=r(sd)
+		local low = `m'-`sd'
+		local high=`m'+`sd'
+		local textp= `m'+1
+
+		hist x`i', ///
+		xline(`low', lc(blue)) xline(`high', lc(blue)) scale(0.5) ///
+		xline(`m', lc(black))  ///
+		name(x`i', replace)
+	} // close forvalues loop 
+	
+<</dd_do>>
+~~~~
+
+###1.2 Joint Distribution
+
+We are going to now create a dataset of two variables using a joint distribution (bivariate normal) where:
+<ul>
+<li> $\mu_1$ = 0, $\mu_2$ = 0  </li> 
+<li> $\sigma_1$ = 1, $\sigma_2$ = 2  </li> 
+<li> $\rho_1$ = 0.6 </li> 
+</ul>
+
+We can check that we drew from the distribution correctly be making a scatter plot showing 
+the two variables we are making plotted against each other. We should see a moderate positive correlation 
+between the two variables ($\rho_1$ = 0.6) with both variables spread around 0, but with a larger spread in 
+x2. 
+	
+~~~~
+<<dd_do>>
+	
+	***Create two variables to capture the joint distribution
+	drop _all
+	set obs 1000
+	set seed 123456789
+
+	matrix mu = (0,0) 
+	matrix sigma = (1,1.2 \ 1.2, 4) // need the variance instead of sigma^2 for matrix
+									// also using var of x and y and rho to solve for cov. (1.2)
+	drawnorm x1 x2, mean(mu) cov(sigma) 
+
+	***Scatter x1 and x2 to check the distribution draws. 
+	scatter x2 x1
+
+<</dd_do>>
+~~~~
+
+<<dd_remove>>
+*******************************
+*
+*	2. The World Series Problem
+*
+*******************************
+<</dd_remove>>
+
+## 2. The World Series
+
+RQ: What is the resulting probability of the better team winning the World Series when an additional game is played?
+We will use simulation techniques to answer this question.  
+
+### 2.1 The Program
+
+First, we want to write an rclass program to simulate the binary outcome of a champtionship series with a given number of games. 
+This program will determine the outcome of *n* games when the "best" team has a known probability of winning. We are most 
+interested in the primary internal return that indicates whether the better team wins the champtionship. Assume the following: 
+<ul>
+<li> There is a known probability that each team wins with the probability that the "best" team wins 0.5 < p < 1. </li> 
+<li> The outcome of each game is independent of the previous games. </li> 
+</ul>
+	
+~~~~
+<<dd_do>>
+
+cap program drop p1
+	program define p1, rclass
+	version 10.1 // I'm using v15.1, but setting old version here for users w/o update. 
+	syntax[, n(integer 7) prob(real 0.6)]	
+	drop _all
+	set obs `n'
+	gen games = rbinomial(1,`prob') // take 01 dummy to indicate win lose
+	quietly sum games
+	return scalar wins = (r(mean) > .5) //prob greater than .5 indicates win
+end	
+
+<</dd_do>>
+~~~~
+
+### 2.2 Simulation
+
+Over 1000 iterations, what percent of series are won when the winner is determined by: 
+<ul>
+<li> A "best of 3" game series </li> 
+<li> A "best of 5" game series </li> 
+<li> A "best of 7" game series </li> 
+</ul>
+
+when p=.60
+
+~~~~
+<<dd_do>>
+forvalues p = 0.6(0.2)0.8 {
+  forvalues n = 3(2)7 {
+	qui simulate wins = r(wins), nodots reps(1000) seed(123456789) : p1, n(`n') prob(`p')
+	qui su, detail
+	loc mean : display %3.1f (`r(mean)'*100)
+	di in red (" ")
+	di in red ("With a World Series lasting `n' games ")
+	di in red ("and a team's probability of winning equal to `p', ")
+ 	di in red ("they will win the world series `mean'% of the time.")
+ 	di in red (" ")
+ } // closes forvalues n
+} // closes forvalues p 	
+<</dd_do>>
+~~~~
+**What would you say to the two sides in the argument?** 
+
+The group that thought increases the number of games would increase the probability that the better tream wins 
+is correct. We see from the simulation that in both instances where a team's probability of winning is greater 
+than 50/50, their probability of winning the world series increased each time we added hypothetical games. 
+
+Additionally, increasing the number of games from 3 games to 7 results in about a 9% improved chance of winning  
+the World Series for the better team for both the p=0.60 and the p=0.80 cases. One could argue that this is not a large improvement, but I think the argument could also be made that this is enough to warrent additional games since it's such an important title for teams and fans in addition to being a chance for extra revenue.
+
+<<dd_remove>>
+*******************************
+*
+*	3. Regression Analysis
+*
+*******************************
+<</dd_remove>>
+
+## 3. Regression analysis
+
+We now are going to investigate the properties of standard OLS regression under ideal conditions. To do this 
+I am going to do the following: 
+<ul>
+<li> Write an rclass program that creates simulated data. </li> 
+<li> Run analysis. </li> 
+<li> Store results using internal returns. </li> 
+<li> Simulate the process 1,000 times. </li> 
+</ul>
+
+### 3.1 The DGP
+
+~~~~
+<<dd_do>>
+cap program drop p2
+	program defi p2, rclass
+	version 10.1
+  	syntax[, n(integer 30) beta(real 1)] 
+    drop _all 
+    set obs `n' 
+    cap drop x 
+    generate x = runiform(0,10)
+    cap drop e 
+    generate e = rnormal(0,1)
+    cap drop y
+    generate y = `beta'*x + e
+    reg y x
+    return scalar betahat = _b[x] 
+	return scalar sehat = _se[x]
+end 
+<</dd_do>>
+~~~~
+
+### 3.2 Monte Carlo 
+
+~~~~
+<<dd_do>>
+	di in red "...Simulation 1/4 running..."
+	simulate betahat=r(betahat) se=r(sehat), nodots reps(1500) seed(9999) : p2 
+	di in red "Simulation finished."
+	qui su betahat, detail
+	loc betahat_mean = `r(mean)'
+	loc betahat_sd = `r(sd)'
+
+	qui su sehat, detail
+	loc sehat_mean = `r(mean)'
+
+<</dd_do>>
+~~~~
+**Is the average $\hat{\beta}$ near the true value?** 
+
+The mean value of $\hat{\beta}$ is <<dd_display: %12.3fc `betahat_mean' >>  and the standard deviation of 
+$\hat{\beta}$ is about <<dd_display: %12.3fc `betahat_sd' >> . We know that the true value of $\beta$ = 1, 
+which is less than 0.01 different from our simulated mean.  
+
+**Is the average standard error close to the true standard deviation of $\hat{\beta}$?**
+The mean value of the standard error for $\hat{\beta}$ is <<dd_display: %12.3fc `sehat_mean' >>. If we define the "true" standard deviation of $\hat{\beta}$ to be the 
+
+**If you used a critical value of |1.96|, what percent of the time would you reject this null hypothesis, even though it is true?**
+
+We are going to create a variable that represents the t-statistic for each $\hat{\beta}$ and standard error we estimated. To do this, we need to calculate the difference between the $\hat{\beta}$ estimate and the null hypothesis ($\beta$ = 1) and divide this difference by the estimated standard error on the coefficient. 
+
+We will then create a variable that is equal to 0 if the t-statistic is *less than* 1.96 and 1 when the t-statistic is *greater than* than 1.96, which indicates that the estimated $\beta$ is greater than two standard error units away from the null hypothesis that $\beta$ = 1.
+~~~~
+<<dd_do>>
+	cap drop tstat
+	generate tstat = (betahat - 1)/se
+
+	cap drop rejectnull 
+	generate rejectnull = abs(tstat)>=1.96
+
+	su rejectnull, detail
+	loc pct = `r(mean)'*100
+
+<</dd_do>>
+~~~~
+
+When we summarize the "rejectnull" variable created comparing the t-statistic to 1.96, we see that it has a mean of 
+<<dd_display: %12.3fc `r(mean)' >>. This would lead us to incorrectly reject the null  <<dd_display: %12.1fc `pct' >>% of the time. 
+
+**Run a simulation with a sample size of 100 with $\beta$ = 1. Compare this distribution with a distribution that has a sample size of 30.**
+<<dd_remove>>
+~~~~
+<<dd_do>>
+cap program drop p3
+	program defi p3, rclass
+	version 10.1
+  	syntax[, n(integer 100) beta(real 1)] 
+    
+    drop _all 
+    set obs `n' 
+    cap drop x 
+    generate x = runiform(0,10)
+
+    cap drop e 
+    generate e = rnormal(0,1)
+
+    cap drop y
+    generate y = `beta'*x + e
+    
+    reg y x
+   
+    return scalar betahat = _b[x] 
+	return scalar se = _se[x]
+end
+
+	di in red "...Simulation 2/4 running..."
+	simulate betahat=r(betahat) se=r(se), nodots reps(5000) seed(123456789) : p3 
+	di in red "Simulation finished."
+	qui su betahat, detail
+	loc betahat_mean = `r(mean)'
+	loc betahat_sd = `r(sd)'
+
+	qui su se, detail
+	loc se_mean = `r(mean)'
+ 
+<</dd_do>>
+~~~~
+<</dd_remove>>
+
+
+We create another program exactly the same as "p2", except we are using a sample of *n*=100 for each distribution draw. We will run the simulation with this new program using the same number of reps. The mean value of $\hat{\beta}$ is <<dd_display: %12.3fc `betahat_mean' >>, and the mean value of the standard error for $\hat{\beta}$ is <<dd_display: %12.3fc `se_mean' >>. 
+
+When we do this, we see that both the estimated $\hat{\beta}$ and its standard error are slightly closer to the true population values ($\beta$=1 and $\sigma$=0). 
+
+
+<<dd_remove>>
+*******************************
+*
+*	4. Heteroskedasticity and Robust Standard Errors
+*
+*******************************
+<</dd_remove>>
+
+## 4. Heteroskedasticity and Robust Standard Errors
+### 4.1 The DGP
+We know that OLS assumes that error terms are normally distributed, but that might not be the case. We want to test what happens to our estimated standard errors if errors are not normally distributed and we don't correct for this in our regression. 
+
+~~~~
+<<dd_do>>
+cap program drop p4
+	program defi p4, rclass
+	version 10.1
+  	syntax[, n(integer 250) beta(real 1) lambda(real 0)] 
+    
+    drop _all 
+    set obs `n' 
+    cap drop x 
+    generate x = runiform(0,10)
+
+    cap drop e 
+    generate e = rnormal(0,1)
+
+    cap drop n 
+    generate n = rnormal(0,1)
+
+    cap drop y
+    generate y = `beta'*x + e + `lambda'*n*x 
+    
+    reg y x  
+   
+    return scalar betahat = _b[x] 
+	return scalar se = _se[x]
+
+	reg y x , robust
+	return scalar robust_se = _se[x]
+
+end
+
+<</dd_do>>
+~~~~
+
+### 4.2 Monte Carlo 
+
+~~~~
+<<dd_do>>
+	di in red "...Simulation 3/4 running..."
+	simulate betahat=r(betahat) se=r(se) robust_se=r(robust_se), ///
+		nodots reps(1000) seed(123456789) : p4, n(250)
+	di in red "Simulation finished."
+
+	sum betahat
+	loc beta_mean=`r(mean)'
+
+	sum se
+	loc se_mean=`r(mean)'
+
+	sum robust_se
+	loc robust_se_mean=`r(mean)'	
+
+	cap drop tstat_1
+	generate tstat_1 = (betahat - 1)/se
+
+	cap drop rejectnull_1 
+	generate rejectnull_1 = tstat_1 >= 1.96
+
+	su rejectnull_1, detail
+	*loc pct_1 = `r(mean)'*100
+
+	cap drop tstat_2
+	generate tstat_2 = (betahat - 1)/robust_se
+
+	cap drop rejectnull_2 
+	generate rejectnull_2 = tstat_2 >= 1.96
+
+	su rejectnull_2, detail
+	*loc pct_2 = `r(mean)'*100
+<</dd_do>>
+~~~~
+
+**Is there a substantial difference between the two estimates of the standard errors?**
+
+There's not a substantive difference between the means of the estiamted standard errors calculated with/without the robust regression option. The mean value of the standard errors estimated *without* the robust option is <<dd_display: %12.3fc `se_mean' >> while the mean value of the standard errors estimated *with* the robust option is <<dd_display: %12.3fc `robust_se_mean' >>. 
+
+**Do you get similar rejection rates with a critical value of |1.96|?**
+
+~~~~
+<<dd_do>>
+	
+	su rejectnull*, detail
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+cap program drop p5
+	program defi p5, rclass
+	version 10.1
+  	syntax[, n(integer 250) beta(real 1) lambda(real 4)] 
+    
+    drop _all 
+    set obs `n' 
+    cap drop x 
+    generate x = runiform(0,10)
+
+    cap drop e 
+    generate e = rnormal(0,1)
+
+    cap drop n 
+    generate n = rnormal(0,1)
+
+    cap drop y
+    generate y = `beta'*x + e + `lambda'*n*x 
+    
+    reg y x  
+   
+    return scalar betahat = _b[x] 
+	return scalar se = _se[x]
+
+	reg y x , robust
+	return scalar robust_se = _se[x]
+
+end
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+	di in red "...Simulation 4/4 running..."
+	simulate betahat=r(betahat) se=r(se) robust_se=r(robust_se), ///
+		nodots reps(1000) seed(123456789) : p4, n(250) lambda(4)
+	di in red "Simulation finished."
+
+	sum betahat
+	loc beta_mean=`r(mean)'
+
+	sum se
+	loc se_mean=`r(mean)'
+
+	sum robust_se
+
+	loc robust_se_mean=`r(mean)'	
+
+	cap drop tstat_1
+	generate tstat_1 = (betahat - 1)/se
+
+	cap drop rejectnull_1 
+	generate rejectnull_1 = tstat_1 >= 1.96
+
+	su rejectnull_1, detail
+	*loc pct_1 = `r(mean)'*100
+
+	cap drop tstat_2
+	generate tstat_2 = (betahat - 1)/robust_se
+
+	cap drop rejectnull_2 
+	generate rejectnull_2 = tstat_2 >= 1.96
+
+	su rejectnull_2, detail
+	*loc pct_2 = `r(mean)'*100
+<</dd_do>>
+~~~~
+
+**Is there a substantial difference between the two estimates of the standard erros?**
+
+**If so, which one is closer, on average, to the true standard deviation of $\hat{\beta}$?**
+
+**Do you get similar rejection rates with a critical value of |1.96|?**
+
+**Will you ever run a regression with classical standard errors again?**
+
+
+
+
+
+
+
+
+
