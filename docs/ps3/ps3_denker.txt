@@ -274,7 +274,7 @@ end
 ~~~~
 <<dd_do>>
 	di in red "...Simulation 1/4 running..."
-	simulate betahat=r(betahat) se=r(sehat), nodots reps(1500) seed(9999) : p2 
+	simulate betahat=r(betahat) sehat=r(sehat), nodots reps(1500) seed(9999) : p2 
 	di in red "Simulation finished."
 	qui su betahat, detail
 	loc betahat_mean = `r(mean)'
@@ -292,7 +292,7 @@ $\hat{\beta}$ is about <<dd_display: %12.3fc `betahat_sd' >> . We know that the 
 which is less than 0.01 different from our simulated mean.  
 
 **Is the average standard error close to the true standard deviation of $\hat{\beta}$?**
-The mean value of the standard error for $\hat{\beta}$ is <<dd_display: %12.3fc `sehat_mean' >>. If we define the "true" standard deviation of $\hat{\beta}$ to be the 
+The mean value of the standard error for $\hat{\beta}$ is <<dd_display: %12.3fc `sehat_mean' >>. If we define the "true" standard deviation of $\hat{\beta}$ to be the standard deviation of our simulated set of $\hat{\beta}$ (<<dd_display: %12.3fc `betahat_sd' >>), then we see that the mean value of the standard error we simulated is very close to this value. 
 
 **If you used a critical value of |1.96|, what percent of the time would you reject this null hypothesis, even though it is true?**
 
@@ -314,7 +314,7 @@ We will then create a variable that is equal to 0 if the t-statistic is *less th
 ~~~~
 
 When we summarize the "rejectnull" variable created comparing the t-statistic to 1.96, we see that it has a mean of 
-<<dd_display: %12.3fc `r(mean)' >>. This would lead us to incorrectly reject the null  <<dd_display: %12.1fc `pct' >>% of the time. 
+<<dd_display: %12.3fc `r(mean)' >>. This would lead us to incorrectly reject the null  <<dd_display: %12.1fc `pct' >>% of the time. This makes sense given that we associate a p-value of 0.05 with a t-statistic of 1.96. 
 
 **Run a simulation with a sample size of 100 with $\beta$ = 1. Compare this distribution with a distribution that has a sample size of 30.**
 <<dd_remove>>
@@ -323,43 +323,38 @@ When we summarize the "rejectnull" variable created comparing the t-statistic to
 cap program drop p3
 	program defi p3, rclass
 	version 10.1
-  	syntax[, n(integer 100) beta(real 1)] 
-    
+  	syntax[, n(integer 100) beta(real 1)]  
     drop _all 
     set obs `n' 
     cap drop x 
     generate x = runiform(0,10)
-
     cap drop e 
     generate e = rnormal(0,1)
-
     cap drop y
     generate y = `beta'*x + e
-    
     reg y x
-   
     return scalar betahat = _b[x] 
-	return scalar se = _se[x]
+	return scalar sehat = _se[x]
 end
 
 	di in red "...Simulation 2/4 running..."
-	simulate betahat=r(betahat) se=r(se), nodots reps(5000) seed(123456789) : p3 
+	simulate betahat=r(betahat) sehat=r(sehat), nodots reps(5000) seed(123456789) : p3 
 	di in red "Simulation finished."
 	qui su betahat, detail
 	loc betahat_mean = `r(mean)'
 	loc betahat_sd = `r(sd)'
 
-	qui su se, detail
-	loc se_mean = `r(mean)'
+	qui su sehat, detail
+	loc sehat_mean = `r(mean)'
  
 <</dd_do>>
 ~~~~
 <</dd_remove>>
 
 
-We create another program exactly the same as "p2", except we are using a sample of *n*=100 for each distribution draw. We will run the simulation with this new program using the same number of reps. The mean value of $\hat{\beta}$ is <<dd_display: %12.3fc `betahat_mean' >>, and the mean value of the standard error for $\hat{\beta}$ is <<dd_display: %12.3fc `se_mean' >>. 
+We create another program exactly the same as "p2", except we are using a sample of *n*=100 for each distribution draw. We will run the simulation with this new program using the same number of reps. The mean value of the simulated $\hat{\beta}$ is <<dd_display: %12.3fc `betahat_mean' >>, and the mean value of the estimated standard errors for $\hat{\beta}$ is <<dd_display: %12.3fc `sehat_mean' >>. 
 
-When we do this, we see that both the estimated $\hat{\beta}$ and its standard error are slightly closer to the true population values ($\beta$=1 and $\sigma$=0). 
+When we do this, we see that both the estimated $\hat{\beta}$ and its standard error are slightly closer to the true population values ($\beta$=1 and $\sigma$=<<dd_display: %12.3fc `betahat_sd' >>). 
 
 
 <<dd_remove>>
@@ -372,7 +367,7 @@ When we do this, we see that both the estimated $\hat{\beta}$ and its standard e
 
 ## 4. Heteroskedasticity and Robust Standard Errors
 ### 4.1 The DGP
-We know that OLS assumes that error terms are normally distributed, but that might not be the case. We want to test what happens to our estimated standard errors if errors are not normally distributed and we don't correct for this in our regression. 
+We know that OLS assumes that error terms are normally distributed, but that might not be the case. We want to test what happens to our estimated standard errors if errors are heteroskedastic and we don't correct for this in our regression. 
 
 ~~~~
 <<dd_do>>
@@ -398,60 +393,55 @@ cap program drop p4
     reg y x  
    
     return scalar betahat = _b[x] 
-	return scalar se = _se[x]
+	return scalar sehat = _se[x]
 
 	reg y x , robust
-	return scalar robust_se = _se[x]
-
+	return scalar betahat_rob = _b[x]
+	return scalar sehat_rob = _se[x]
 end
 
 <</dd_do>>
 ~~~~
 
-### 4.2 Monte Carlo 
+### 4.2a Monte Carlo - Homoskedastic
 
 ~~~~
 <<dd_do>>
 	di in red "...Simulation 3/4 running..."
-	simulate betahat=r(betahat) se=r(se) robust_se=r(robust_se), ///
+	simulate betahat=r(betahat) sehat=r(sehat) betahat_rob=r(betahat_rob) sehat_rob=r(sehat_rob), ///
 		nodots reps(1000) seed(123456789) : p4, n(250)
 	di in red "Simulation finished."
+
+	sum 
 
 	sum betahat
 	loc beta_mean=`r(mean)'
 
-	sum se
-	loc se_mean=`r(mean)'
+	sum sehat
+	loc sehat_mean=`r(mean)'
 
-	sum robust_se
-	loc robust_se_mean=`r(mean)'	
+	sum sehat_rob
+	loc sehat_rob_mean=`r(mean)'	
 
 	cap drop tstat_1
-	generate tstat_1 = (betahat - 1)/se
+	generate tstat_1 = (betahat - 1)/sehat
 
 	cap drop rejectnull_1 
-	generate rejectnull_1 = tstat_1 >= 1.96
-
-	su rejectnull_1, detail
-	*loc pct_1 = `r(mean)'*100
+	generate rejectnull_1 = abs(tstat_1) >= 1.96
 
 	cap drop tstat_2
-	generate tstat_2 = (betahat - 1)/robust_se
+	generate tstat_2 = (betahat - 1)/sehat_rob
 
 	cap drop rejectnull_2 
-	generate rejectnull_2 = tstat_2 >= 1.96
-
-	su rejectnull_2, detail
-	*loc pct_2 = `r(mean)'*100
+	generate rejectnull_2 = abs(tstat_2) >= 1.96
 <</dd_do>>
 ~~~~
 
 **Is there a substantial difference between the two estimates of the standard errors?**
 
-There's not a substantive difference between the means of the estiamted standard errors calculated with/without the robust regression option. The mean value of the standard errors estimated *without* the robust option is <<dd_display: %12.3fc `se_mean' >> while the mean value of the standard errors estimated *with* the robust option is <<dd_display: %12.3fc `robust_se_mean' >>. 
+There's not a difference between the means of the estimated standard errors calculated with/without the robust regression option. The mean value of the standard errors estimated *without* the robust option is <<dd_display: %12.3fc `sehat_mean' >> while the mean value of the standard errors estimated *with* the robust option is <<dd_display: %12.3fc `sehat_rob_mean' >>. Both are very close to the true standard deviation of simulated $\hat{\beta}$. 
 
 **Do you get similar rejection rates with a critical value of |1.96|?**
-
 ~~~~
 <<dd_do>>
 	
@@ -459,87 +449,67 @@ There's not a substantive difference between the means of the estiamted standard
 
 <</dd_do>>
 ~~~~
+Yes, the rejection rates for both types of estimated standard errors is about 5.5%. 
 
 
-~~~~
-<<dd_do>>
-cap program drop p5
-	program defi p5, rclass
-	version 10.1
-  	syntax[, n(integer 250) beta(real 1) lambda(real 4)] 
-    
-    drop _all 
-    set obs `n' 
-    cap drop x 
-    generate x = runiform(0,10)
+### 4.2b DGP & Monte Carlo - Heteroskedastic
 
-    cap drop e 
-    generate e = rnormal(0,1)
-
-    cap drop n 
-    generate n = rnormal(0,1)
-
-    cap drop y
-    generate y = `beta'*x + e + `lambda'*n*x 
-    
-    reg y x  
-   
-    return scalar betahat = _b[x] 
-	return scalar se = _se[x]
-
-	reg y x , robust
-	return scalar robust_se = _se[x]
-
-end
-
-<</dd_do>>
-~~~~
-
+We are going to repeat the data generating process and simulate data when heteroskedasticity is present in the sample. We can then compare differences between estimated standard errors using this process to those estimated in the homoskedastic sample data. 
 
 ~~~~
 <<dd_do>>
 	di in red "...Simulation 4/4 running..."
-	simulate betahat=r(betahat) se=r(se) robust_se=r(robust_se), ///
+	simulate betahat=r(betahat) sehat=r(sehat) betahat_rob=r(betahat_rob) sehat_rob=r(sehat_rob), ///
 		nodots reps(1000) seed(123456789) : p4, n(250) lambda(4)
 	di in red "Simulation finished."
 
 	sum betahat
 	loc beta_mean=`r(mean)'
 
-	sum se
-	loc se_mean=`r(mean)'
+	sum sehat
+	loc sehat_mean=`r(mean)'
 
-	sum robust_se
+	sum sehat_rob
 
-	loc robust_se_mean=`r(mean)'	
+	loc sehat_rob_mean=`r(mean)'	
 
 	cap drop tstat_1
-	generate tstat_1 = (betahat - 1)/se
+	generate tstat_1 = (betahat - 1)/sehat
 
 	cap drop rejectnull_1 
-	generate rejectnull_1 = tstat_1 >= 1.96
-
-	su rejectnull_1, detail
-	*loc pct_1 = `r(mean)'*100
+	generate rejectnull_1 = abs(tstat_1) >= 1.96
 
 	cap drop tstat_2
-	generate tstat_2 = (betahat - 1)/robust_se
+	generate tstat_2 = (betahat - 1)/sehat_rob
 
 	cap drop rejectnull_2 
-	generate rejectnull_2 = tstat_2 >= 1.96
-
-	su rejectnull_2, detail
-	*loc pct_2 = `r(mean)'*100
+	generate rejectnull_2 = abs(tstat_2) >= 1.96
 <</dd_do>>
 ~~~~
 
-**Is there a substantial difference between the two estimates of the standard erros?**
+**Is there a substantial difference between the two estimates of the standard errors?**
+~~~~
+<<dd_do>>
+	su 
+<</dd_do>>
+~~~~
+When more heteroskedasticity is present in the data, we see substantial differences in the estimated standard errors. The robust standard error is <<dd_display: %12.3fc `sehat_rob_mean' >> while the regular standard error is <<dd_display: %12.3fc `sehat_mean' >>, which is about a 9% difference in estimated values. 
 
 **If so, which one is closer, on average, to the true standard deviation of $\hat{\beta}$?**
+We also see that the robust standard error remains close to the true standard deviation of the sample $\hat{\beta}$, and the regular standard error underestimates this "true" value. These differences may lead us to conclude that differences statistically significant when they are, in fact, a product of heteroskedasticity. 
 
 **Do you get similar rejection rates with a critical value of |1.96|?**
+~~~~
+<<dd_do>>
+	su rejectnull*
+<</dd_do>>
+~~~~
 
+The rejection rates are substantively different between the two types of standard error estimation. Using the robust standard errors, we would reject the null hypothesis incorrectly about 5.1% of the time - what we would expect for a t-statistic of 1.96 and the corresponding p-value of 0.05. Using the standard errors estimated without controlling for the heteroskedastic nature of the sample, we would reject the null hypothesis incorrectly about 7.8% of the time. We see that this rejection rate is higher than 5%, meaning that we would reject the null when we shouldn't more often than the rate we assume. In other words, if we don't account for heteroskedasticity in the estimates of our standard error we may overestimate the precision of our coefficients and more freqently conclude that results are statistically significant (not due to chance) when in fact this is not the case. 
+ 
 **Will you ever run a regression with classical standard errors again?**
+
+It seems pretty easy to just throw on the "robust" option to our regression specfication. Adding this option seems to help us get estimates we can trust without any obvious downsides. 
 
 
 
