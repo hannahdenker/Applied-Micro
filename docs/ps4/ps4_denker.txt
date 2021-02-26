@@ -1,0 +1,197 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 4
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 4
+*	CREATED: 	02/24/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty and Dan Mangan		
+*	CALLS UPON:	Generates data needed
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+	***Set cd for header.txt file to run & opens the folder in Git for this
+	***PSET
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps4/"
+	
+	glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+	glob datapath 		"${projectpath}5. Datasets/"
+	glob gendatapath 	"${projectpath}7. Generated Datasets/"
+
+<</dd_do>>
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 4 
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty & Dan Mangan  
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+~~~~
+<<dd_do>>
+	***Load Data cleaned in PSET 1 for Analysis 
+	use "${gendatapath}acsrecoded.dta", clear	
+	
+<</dd_do>>
+~~~~
+
+## Schooling and Earnings
+
+##### Run a regression to estimate the conditional expectation of log earnings with years of education as the RHS variable. Treat years of education as if it were a continuous variable. 
+~~~~
+<<dd_do>>
+	***These are the three vars of interest. Checking differences beween "educyears" and "educrec" vars. Output not shown
+	qui tab  educyears  educrec
+	qui sum  educyears  educrec logearn
+
+	***Using the continuous version of "educyears"
+	reg logearn educyears, robust
+	
+<</dd_do>>
+~~~~
+
+**Give an essential summary of the results.**  
+For every additional year of education, we would expect about a 13.8% positive difference in logged earnings. We see that this estimate is statistically significant at p < 0.001, suggesting that this association is not due to chance. We also see that the conditional expectation of log earnings for a person with 0 years of education is about 8.39, or about $4403. This is not practically significant as we would not expect a person to enter the workforce with 0 years of education. 
+
+
+##### Create a new variable called "linearfitted" that contains the fitted values from this regression. 
+~~~~
+<<dd_do>>
+	***Regressing logged earnings on continuous version of "educyears"
+	cap drop linearfitted 
+	qui reg  logearn educyears, robust // output not shown. same as above. 
+	predict  linearfitted 
+	
+<</dd_do>>
+~~~~
+
+
+##### Run a regression to estimate the same conditional expectation, but treating the categories of the "yeared" variable as if they were not cardinal. Create a variable called "discretefitted" with the fitted values from this regression. 
+~~~~
+<<dd_do>>
+	***Create a set of dummies representing each category of education and use these dummies in the regression instead of the single, continuous "educyears" variable.
+	qui tab educyears, gen(educyears_dum) // output not shown
+
+	***Regress logged earnings on set of dummies leaving out reference category of no years of education (educyears_dum1). 
+	cap drop discretefitted 
+	reg logearn educyears_dum2-educyears_dum9, robust
+	predict discretefitted
+	
+<</dd_do>>
+~~~~
+
+**Write a short paragraph with the essential findings from this specification. How do they differ from the first regression you ran?**  
+We see that the constant, or the conditional expectation of logged earnings for a person with a value of 0 for this variable (no education or preschool), is similar to what was estimated for the continuous educational attainment variable. The constant in this specification is 8.47, or about $4770. Once again, this estimate is not necessarily meaningful as we wouldn't expect many people to enter the labor market with zero years of education. Additionally, we see that the first four indicators of educational attainment (educyears_dum2-5) are not statistically different from zero. This suggests that achieving each of these levels of education is not associated with differences in logged earnings relative to having no years of education (the reference category). This makes sense because the highest level of education represented by this subset of the indicators corresponds with a 10th grade education, which we would assume would be about the earliest a student could leave school for work due to mandatory schooling laws. Interestingly, the "educyears_dum6" indicator (corresponding to an 11th grade education) is negatively associated with the outcome. This also makes sense if we think about the opportunity cost associated with leaving before attaining a high school degree. The last three indicators, representing at least a high school degree or higher, are positively associated with logged earnings and are all statistically significant at the p<0.001 level. 
+
+In short, we can see from this specification that certain additional years of education are more strongly associated with logged earnings than others, which suggests that a linear relationship might obscure important patterns in the data. 
+
+
+
+##### Make an overlaid graph with line graphs of the fitted values from both regressions. 
+~~~~
+<<dd_do>>
+	qui codebook linearfitted discretefitted
+
+	***Each set of predicted values has 9 unique values. This makes sense if we think about how we are running a simple regression where each of the RHS vars has only 9 values (even the "continuous" version). So we should see a scatter with points "stacked" along 9 points on the x-axis for each specification. 
+	
+	***This graph takes forever to make with all of the observations so I'm collapsing using the means of the predicted values and logged earnings by the different values of educyears (x-axis variable)
+	preserve 
+		collapse (mean) logearn linearfitted discretefitted , by(educyears)
+
+		graph twoway ///
+		 	(connected logearn	discretefitted) ///
+		 	(connected logearn	linearfitted) ///
+		 	, ///
+		 	legend(label(1 "Continuous") label(2 "Discrete")) ///
+		 	ytitle("Mean Logged Annual Earnings") ///
+		 	xtitle("Fitted Values from Regressing Educ. Years on Logged Earnings")
+	 restore 	
+<</dd_do>>
+~~~~
+<<dd_graph: saving("scatter_educ.png") replace height(400)>>
+
+
+**Based on this graph, how do you feel about approximating the CEF as a linear function of the _single yeared_ variable**  
+The graphical evidence supports our conclusions drawn from interpretting coefficients from the two regression specifications. We see that using the continuous version of the educational attainment variable masks important variation in the predicted values of the outcome variable. Thus, approximating the CEF as a linear function of the _single yeared_ variable does not seem like a good choice if our research question is centered on the assocation between educational achievement and annual earnings. 
+
+
+## Experience and Earnings
+
+##### Run a regression of earnings (not log earnings) on experience and experience squared.
+~~~~
+<<dd_do>>
+	***Limit sample to observations with annual income greater than zero so that the sample will match that used when we use logged income. 
+	reg incwage exper expersq if incwage > 0, robust
+<</dd_do>>
+~~~~
+**Interpret the results of this regression.**  
+
+
+##### Run a regression of log earnings on experience and experience squared.
+~~~~
+<<dd_do>>
+	reg logearn exper expersq, robust
+<</dd_do>>
+~~~~
+**Interpret the results of this regression. Which speciﬁcation do you prefer and why?**  
+
+
+##### Run the log earnings regression, limiting the sample to non-immigrants.
+~~~~
+<<dd_do>>
+	reg logearn exper expersq if immigrant==0, robust 
+<</dd_do>>
+~~~~
+
+##### Run the log earnings regression, limiting the sample to immigrants.
+~~~~
+<<dd_do>>
+	reg logearn exper expersq if immigrant==1, robust 
+<</dd_do>>
+~~~~
+**What conclusions can you draw based on these separate regressions?**  
+
+##### Run an interaction model that allows you to test whether the CEF has the same slope for immigrants and non-immigrants. HINT: If you have speciﬁed this regression correctly, you should receive identical parameter estimates for all of the CEFs suggested by the separate regressions.
+~~~~
+<<dd_do>>
+
+<</dd_do>>
+~~~~
+
+**Can you reject the null that the slope of the CEF does not depend on immigrant status? HINT: Testing this null requires testing a joint null, and thus the “test” command.**  
+
+
+## Marital Status and Earnings
+
+
