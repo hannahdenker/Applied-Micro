@@ -1,0 +1,719 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    htmlTableOfContents();
+} );                        
+
+function htmlTableOfContents( documentRef ) {
+    var documentRef = documentRef || document;
+    var toc = documentRef.getElementById("toc");
+//  Use headings inside <article> only:
+//  var headings = [].slice.call(documentRef.body.querySelectorAll('article h1, article h2, article h3, article h4, article h5, article h6'));
+    var headings = [].slice.call(documentRef.body.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach(function (heading, index) {
+        var ref = "toc" + index;
+        if ( heading.hasAttribute( "id" ) ) 
+            ref = heading.getAttribute( "id" );
+        else
+            heading.setAttribute( "id", ref );
+
+        var link = documentRef.createElement( "a" );
+        link.setAttribute( "href", "#"+ ref );
+        link.textContent = heading.textContent;
+
+        var div = documentRef.createElement( "div" );
+        div.setAttribute( "class", heading.tagName.toLowerCase() );
+        div.appendChild( link );
+        toc.appendChild( div );
+    });
+}
+
+
+try {
+    module.exports = htmlTableOfContents;
+} catch (e) {
+    // module.exports is not defined
+}
+</script>
+</head>
+<h1><a href="#problem-set-5" id="problem-set-5">Problem Set 5</a></h1>
+<p>Course: ECON 8848<br />
+Author: Hannah Denker<br />
+Collaborators: Michelle Doughty &amp; Dan Mangan<br />
+Date:  5 Mar 2021</p>
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+<h2><a href="#potential-outcomes-framework" id="potential-outcomes-framework">Potential Outcomes Framework</a></h2>
+<pre><code>.         ***Set # of obs to 100,000
+.         set obs  100000
+number of observations (_N) was 0, now 100,000
+
+.         set seed 123456
+
+. 
+.         ***For each individual, draw two potential outcomes represeting knowledge of micro in treated y_1 and u
+&gt; ntreated y_0 states of the world.
+.         cap drop y0 
+
+.         cap drop y1 
+
+.         cap drop effect 
+
+.         generate y0 = rnormal(50, 5)
+
+.         generate y1 = y0 + rnormal(5, 2)
+
+. 
+.         ***Create var that is each individual's effect of having to take prelim second time. 
+.         generate effect = y1 - y0 
+
+</code></pre>
+<h3><a href="#selection-bias" id="selection-bias">Selection Bias</a></h3>
+<p><strong>If you could observe both potential outcomes for each individual, what would you do?</strong><br />
+To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We could then find the mean of this variable to identify the average causal effect across the sample (which is what we do when we make the &lsquo;effect&rsquo; variable above.)</p>
+<p><strong>Does it match what you expected?</strong></p>
+<pre><code>.         qui sum effect, meanonly
+
+.         di in red `r(mean)'
+5.0025634
+
+</code></pre>
+<p>The mean of the &ldquo;effect&rdquo; variable is 5.003. We would expect that this value <em>would</em> be close to 5 since the mean of the &lsquo;noise&rsquo; we added to the treated potential outcome is 5.</p>
+<p>Mimic the random assignment that would occur in an experiment.</p>
+<pre><code>.         ***Create var that has a 0.5 prob of being 1 and is 0 otherwise
+.         cap drop treated yobs
+
+.         generate treated = (runiform() &gt; 0.5)
+
+. 
+.         ***Create a var that is the observed potential outcome for each individual based on group assignment. 
+.         generate yobs = y0
+
+.         replace yobs = y1 if treated == 1
+(49,890 real changes made)
+
+. 
+.         ***Run a reg. to get the difference in means of the observed value of y_i between treated/untreated gro
+&gt; ups.
+.         reg yobs treated
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(1, 99998)     =  22663.17
+       Model |  612498.244         1  612498.244   Prob &gt; F        =    0.0000
+    Residual |  2702561.47    99,998  27.0261552   R-squared       =    0.1848
+-------------+----------------------------------   Adj R-squared   =    0.1848
+       Total |  3315059.71    99,999  33.1509286   Root MSE        =    5.1987
+
+------------------------------------------------------------------------------
+        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     treated |   4.949752   .0328793   150.54   0.000     4.885309    5.014195
+       _cons |   50.03245   .0232236  2154.38   0.000     49.98693    50.07797
+------------------------------------------------------------------------------
+
+.         disp in red _b[treated] //coef. of interest in on treated
+4.9497523
+
+</code></pre>
+<p><strong>Does this regression coeﬃcient match the true ATE?</strong><br />
+The coefficient on the treated dummy is 4.9998, with a standard error of 0.032. We would conclude that this estimate captures the true ATE within its confidence interval.</p>
+<p>Now, mimic the assignemnt that would occur if assignment to the treatment were based on an exam.</p>
+<pre><code>. 
+.         cap drop firstprelim 
+
+.         cap drop failed 
+
+.         cap drop secondprelim 
+
+.         cap drop yobs_2
+
+. 
+.         ***Create a score on the first prelim equal to person's actual knowledge level (y_0) and some noise. 
+.         generate firstprelim = y0 + rnormal(0, 2)
+
+. 
+.         ***Create a new treated variable equal to 1 iff i's exam score is &lt; 45.
+.         generate failed = (firstprelim &lt; 45)
+
+. 
+.         ***Create new observed y var = to potential outcome under assignment into groups via test score. 
+.         generate secondprelim = y1 + rnormal(0,2)
+
+. 
+.         generate yobs_2 = firstprelim
+
+.         replace  yobs_2 = secondprelim if failed == 1
+(17,630 real changes made)
+
+. 
+</code></pre>
+<p><strong>What is the sign of the selection bias introduced by this assignment procedure?</strong><br />
+When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from</p>
+<pre><code>Failed is associated with small y0 scores. Therefore y1 will tend to be smaller among the observed treated group (because it is a function of y0) and the y0 will tend to be higher among the observed non-treated group. Therefore this coefficient represents the treatment affect plus the sample difference in y0 between the treated and the non-treated groups
+</code></pre>
+<p><strong>What is the exact magnitude of the selection bias in your sample?</strong></p>
+<p>Run a regression to estimate the difference in observed outcomes between treated and untreated groups.</p>
+<pre><code>.         reg yobs_2 failed
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(1, 99998)     =  10379.92
+       Model |   179813.89         1   179813.89   Prob &gt; F        =    0.0000
+    Residual |   1732289.2    99,998  17.3232385   R-squared       =    0.0940
+-------------+----------------------------------   Adj R-squared   =    0.0940
+       Total |  1912103.09    99,999  19.1212221   Root MSE        =    4.1621
+
+------------------------------------------------------------------------------
+      yobs_2 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+      failed |  -3.518851   .0345385  -101.88   0.000    -3.586547   -3.451156
+       _cons |   51.70234   .0145021  3565.17   0.000     51.67392    51.73076
+------------------------------------------------------------------------------
+
+.         disp in red _b[failed]
+-3.5188514
+
+.         bysort failed: sum firstprelim
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; failed = 0
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+ firstprelim |     82,370    51.70234    4.200036   45.00031   74.06194
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; failed = 1
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+ firstprelim |     17,630    42.07094    2.468977   27.95119   44.99979
+
+
+</code></pre>
+<p><strong>Is the resulting coeﬃcient what you expected, given your answer to the above questions and our formula from class?</strong></p>
+<pre><code>. 
+.         generate cost = rnormal(-5, 2)
+
+. 
+.         generate treated3 = 0
+
+.         replace  treated3 = 1 if y1 - y0 - cost &gt; 0
+(99,980 real changes made)
+
+.         generate yobs3 = yobs_2
+
+.         replace  yobs3 = y1 if treated3 == 1
+(99,980 real changes made)
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg yobs3 treated3
+
+      Source |       SS           df       MS      Number of obs   =   100,000
+-------------+----------------------------------   F(1, 99998)     =     26.33
+       Model |  765.343096         1  765.343096   Prob &gt; F        =    0.0000
+    Residual |  2906866.78    99,998  29.0692491   R-squared       =    0.0003
+-------------+----------------------------------   Adj R-squared   =    0.0003
+       Total |  2907632.12    99,999   29.076612   Root MSE        =    5.3916
+
+------------------------------------------------------------------------------
+       yobs3 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+    treated3 |   6.186664   1.205717     5.13   0.000     3.823474    8.549854
+       _cons |   48.82947   1.205596    40.50   0.000     46.46651    51.19242
+------------------------------------------------------------------------------
+
+.         disp in red _b[treated3]
+6.1866639
+
+. 
+</code></pre>
+<pre><code>. 
+.         sum effect if treated3 == 1, meanonly
+
+.         disp in red  r(mean)
+5.0037094
+
+. 
+</code></pre>
+<h3><a href="#omitted-variable-bias" id="omitted-variable-bias">Omitted Variable Bias</a></h3>
+<pre><code>. 
+.         use &quot;${datapath}schoolexp.dta&quot;, replace
+
+.         reg read4 exppp, robust
+
+Linear regression                               Number of obs     =      1,823
+                                                F(1, 1821)        =       1.44
+                                                Prob &gt; F          =     0.2302
+                                                R-squared         =     0.0010
+                                                Root MSE          =     19.143
+
+------------------------------------------------------------------------------
+             |               Robust
+       read4 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       exppp |  -.0005458   .0004547    -1.20   0.230    -.0014377    .0003461
+       _cons |   62.89736   2.333356    26.96   0.000     58.32103     67.4737
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg read4 exppp lunch, robust
+
+Linear regression                               Number of obs     =      1,823
+                                                F(2, 1820)        =     423.22
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.3868
+                                                Root MSE          =     15.002
+
+------------------------------------------------------------------------------
+             |               Robust
+       read4 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       exppp |    .002063   .0003702     5.57   0.000      .001337     .002789
+       lunch |  -.4629633    .015944   -29.04   0.000    -.4942337   -.4316928
+       _cons |   67.51695   1.858993    36.32   0.000     63.87096    71.16293
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg read4 exppp lunch, robust
+
+Linear regression                               Number of obs     =      1,823
+                                                F(2, 1820)        =     423.22
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.3868
+                                                Root MSE          =     15.002
+
+------------------------------------------------------------------------------
+             |               Robust
+       read4 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       exppp |    .002063   .0003702     5.57   0.000      .001337     .002789
+       lunch |  -.4629633    .015944   -29.04   0.000    -.4942337   -.4316928
+       _cons |   67.51695   1.858993    36.32   0.000     63.87096    71.16293
+------------------------------------------------------------------------------
+
+.         global beta1cor = _b[exppp]
+
+.         global beta2cor = _b[lunch]
+
+. 
+.         reg read4 exppp
+
+      Source |       SS           df       MS      Number of obs   =     1,823
+-------------+----------------------------------   F(1, 1821)      =      1.77
+       Model |  647.160324         1  647.160324   Prob &gt; F        =    0.1840
+    Residual |  667332.262     1,821  366.464724   R-squared       =    0.0010
+-------------+----------------------------------   Adj R-squared   =    0.0004
+       Total |  667979.422     1,822  366.618783   Root MSE        =    19.143
+
+------------------------------------------------------------------------------
+       read4 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       exppp |  -.0005458   .0004107    -1.33   0.184    -.0013514    .0002597
+       _cons |   62.89736   2.180318    28.85   0.000     58.62117    67.17355
+------------------------------------------------------------------------------
+
+.         disp _b[exppp] - $beta1cor
+-.00260885
+
+. 
+.         reg lunch exppp
+
+      Source |       SS           df       MS      Number of obs   =     1,823
+-------------+----------------------------------   F(1, 1821)      =    104.46
+       Model |  68977.8563         1  68977.8563   Prob &gt; F        =    0.0000
+    Residual |  1202491.94     1,821   660.34703   R-squared       =    0.0543
+-------------+----------------------------------   Adj R-squared   =    0.0537
+       Total |   1271469.8     1,822  697.842919   Root MSE        =    25.697
+
+------------------------------------------------------------------------------
+       lunch |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       exppp |   .0056351   .0005514    10.22   0.000     .0045537    .0067165
+       _cons |   9.978296   2.926778     3.41   0.001     4.238102    15.71849
+------------------------------------------------------------------------------
+
+.         disp _b[exppp] * $beta2cor
+-.00260885
+
+. 
+</code></pre>
+<h3><a href="#fwl" id="fwl">FWL</a></h3>
+<pre><code>. 
+.         reg read4 lunch, robust
+
+Linear regression                               Number of obs     =      1,823
+                                                F(1, 1821)        =     828.01
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.3737
+                                                Root MSE          =     15.157
+
+------------------------------------------------------------------------------
+             |               Robust
+       read4 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       lunch |  -.4431021   .0153987   -28.78   0.000    -.4733031   -.4129011
+       _cons |   77.45448    .547038   141.59   0.000     76.38159    78.52736
+------------------------------------------------------------------------------
+
+.         predict read4_resids, residuals
+
+.         label variable read4_resids &quot;Residualized Student Reading Score (%)&quot;
+
+. 
+.         reg exppp lunch, robust
+
+Linear regression                               Number of obs     =      1,823
+                                                F(1, 1821)        =      96.28
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0543
+                                                Root MSE          =     1062.2
+
+------------------------------------------------------------------------------
+             |               Robust
+       exppp |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       lunch |   9.627238   .9811534     9.81   0.000     7.702934    11.55154
+       _cons |   4816.978   44.57753   108.06   0.000      4729.55    4904.407
+------------------------------------------------------------------------------
+
+.         predict exppp_resids, residuals
+
+.         label variable exppp_resids &quot;Residualized Expenditure per pupil&quot;
+
+. 
+.         reg read4_resids exppp_resids
+
+      Source |       SS           df       MS      Number of obs   =     1,823
+-------------+----------------------------------   F(1, 1821)      =     38.87
+       Model |  8743.58554         1  8743.58554   Prob &gt; F        =    0.0000
+    Residual |  409596.145     1,821  224.929239   R-squared       =    0.0209
+-------------+----------------------------------   Adj R-squared   =    0.0204
+       Total |   418339.73     1,822  229.604682   Root MSE        =    14.998
+
+------------------------------------------------------------------------------
+read4_resids |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+exppp_resids |    .002063   .0003309     6.23   0.000     .0014141     .002712
+       _cons |   7.91e-09   .3512607     0.00   1.000    -.6889163    .6889163
+------------------------------------------------------------------------------
+
+. 
+.         scatter read4 exppp //, scheme(s2mono)
+
+.         graph save bivariate.gph, replace
+(file bivariate.gph saved)
+
+.         scatter read4_resids exppp_resids //, scheme(s2mono)
+
+.         graph save fwl.gph, replace
+(file fwl.gph saved)
+
+. 
+.         graph combine bivariate.gph fwl.gph
+
+.         graph save combined_graph.gph, replace
+(file combined_graph.gph saved)
+
+. 
+</code></pre>
+<h3><a href="#signing-the-bias" id="signing-the-bias">Signing the Bias</a></h3>
+<h3><a href="#matching" id="matching">Matching</a></h3>
+<pre><code>. 
+.         use &quot;${datapath}matching_ps5.dta&quot;, clear
+
+. 
+.         gen te = y1 - y0
+
+.         mean te if female == 1
+
+Mean estimation                   Number of obs   =      2,555
+
+--------------------------------------------------------------
+             |       Mean   Std. Err.     [95% Conf. Interval]
+-------------+------------------------------------------------
+          te |          5   1.41e-09             5           5
+--------------------------------------------------------------
+
+.         mean te if female == 0
+
+Mean estimation                   Number of obs   =      2,445
+
+--------------------------------------------------------------
+             |       Mean   Std. Err.     [95% Conf. Interval]
+-------------+------------------------------------------------
+          te |         10   1.31e-08            10          10
+--------------------------------------------------------------
+
+.         mean te
+
+Mean estimation                   Number of obs   =      5,000
+
+--------------------------------------------------------------
+             |       Mean   Std. Err.     [95% Conf. Interval]
+-------------+------------------------------------------------
+          te |      7.445   .0353503      7.375698    7.514302
+--------------------------------------------------------------
+
+.         bysort female: sum treated
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 0
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     treated |      2,445    .7443763    .4363005          0          1
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 1
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     treated |      2,555    .2626223     .440145          0          1
+
+
+. 
+</code></pre>
+<pre><code>. 
+.         sort female
+
+.         bysort female: sum y0 y1
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 0
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          y0 |      2,445    10.02004     1.98157   3.185875   18.62902
+          y1 |      2,445    20.02004     1.98157   13.18587   28.62902
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 1
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          y0 |      2,555   -.0022972    2.056391  -7.606311   6.652541
+          y1 |      2,555    4.997703    2.056391  -2.606311   11.65254
+
+
+.         bysort female: compare yobs y1
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 0
+
+                                        ---------- difference ----------
+                            count       minimum      average     maximum
+------------------------------------------------------------------------
+yobs&lt;y1                       625           -10          -10   -9.999999
+yobs=y1                      1820
+                       ----------
+jointly defined              2445           -10    -2.556237           0
+                       ----------
+total                        2445
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 1
+
+                                        ---------- difference ----------
+                            count       minimum      average     maximum
+------------------------------------------------------------------------
+yobs&lt;y1                      1884            -5           -5          -5
+yobs=y1                       671
+                       ----------
+jointly defined              2555            -5    -3.686888           0
+                       ----------
+total                        2555
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg yobs treated, robust
+
+Linear regression                               Number of obs     =      5,000
+                                                F(1, 4998)        =    6368.41
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.5609
+                                                Root MSE          =     5.9678
+
+------------------------------------------------------------------------------
+             |               Robust
+        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     treated |   13.48758   .1690124    79.80   0.000     13.15624    13.81891
+       _cons |   2.490117   .0957861    26.00   0.000     2.302334      2.6779
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         bysort female: reg yobs treated, robust
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 0
+
+Linear regression                               Number of obs     =      2,445
+                                                F(1, 2443)        =   12042.03
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.8290
+                                                Root MSE          =      1.982
+
+------------------------------------------------------------------------------
+             |               Robust
+        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     treated |   10.00179   .0911439   109.74   0.000     9.823063    10.18052
+       _cons |   10.01871   .0782983   127.96   0.000     9.865173    10.17225
+------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------------------------
+-&gt; female = 1
+
+Linear regression                               Number of obs     =      2,555
+                                                F(1, 2553)        =    3087.68
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.5358
+                                                Root MSE          =     2.0568
+
+------------------------------------------------------------------------------
+             |               Robust
+        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     treated |   5.019529   .0903331    55.57   0.000     4.842395    5.196663
+       _cons |  -.0074259   .0479795    -0.15   0.877    -.1015085    .0866567
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg yobs treated##female, robust
+
+Linear regression                               Number of obs     =      5,000
+                                                F(3, 4996)        =   31199.45
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.9497
+                                                Root MSE          =     2.0205
+
+--------------------------------------------------------------------------------
+               |               Robust
+          yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+---------------+----------------------------------------------------------------
+     1.treated |   10.00179   .0911431   109.74   0.000      9.82311    10.18047
+      1.female |  -10.02614   .0918291  -109.18   0.000    -10.20616   -9.846111
+               |
+treated#female |
+          1 1  |  -4.982261   .1283249   -38.83   0.000    -5.233835   -4.730688
+               |
+         _cons |   10.01871   .0782976   127.96   0.000     9.865213    10.17221
+--------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         reg yobs treated female, robust
+
+Linear regression                               Number of obs     =      5,000
+                                                F(2, 4997)        =   41180.13
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.9350
+                                                Root MSE          =     2.2963
+
+------------------------------------------------------------------------------
+             |               Robust
+        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     treated |   7.433993   .0828201    89.76   0.000     7.271629    7.596357
+      female |  -12.57164    .082822  -151.79   0.000      -12.734   -12.40927
+       _cons |   11.93012   .0826656   144.32   0.000     11.76806    12.09218
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<pre><code>. 
+.         psmatch2 treated female, outcome(yobs) caliper(0.5) ate
+
+Probit regression                               Number of obs     =      5,000
+                                                LR chi2(1)        =    1209.54
+                                                Prob &gt; chi2       =     0.0000
+Log likelihood =  -2860.933                     Pseudo R2         =     0.1745
+
+------------------------------------------------------------------------------
+     treated |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+      female |  -1.292178   .0382861   -33.75   0.000    -1.367218   -1.217139
+       _cons |   .6568965   .0274378    23.94   0.000     .6031194    .7106736
+------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+        Variable     Sample |    Treated     Controls   Difference         S.E.   T-stat
+----------------------------+-----------------------------------------------------------
+            yobs  Unmatched | 15.9776929   2.49011711   13.4875758   .168796854    79.90
+                        ATT | 15.9776929   3.70040209   12.2772908   4.13574198     2.97
+                        ATU | 2.49011711   8.98196226   6.49184516            .        .
+                        ATE |                            9.3741542            .        .
+----------------------------+-----------------------------------------------------------
+Note: S.E. does not take into account that the propensity score is estimated.
+
+           | psmatch2:
+ psmatch2: |   Common
+ Treatment |  support
+assignment | On suppor |     Total
+-----------+-----------+----------
+ Untreated |     2,509 |     2,509 
+   Treated |     2,491 |     2,491 
+-----------+-----------+----------
+     Total |     5,000 |     5,000 
+
+.         disp in red &quot;ATE: &quot; r(ate) &quot;, ATT: &quot; r(att)
+ATE: 9.3741542, ATT: 12.277291
+
+. 
+</code></pre>
+<pre><code>. 
+.         psmatch2 treated female, outcome(yobs) caliper(0.1) ate
+
+Probit regression                               Number of obs     =      5,000
+                                                LR chi2(1)        =    1209.54
+                                                Prob &gt; chi2       =     0.0000
+Log likelihood =  -2860.933                     Pseudo R2         =     0.1745
+
+------------------------------------------------------------------------------
+     treated |      Coef.   Std. Err.      z    P&gt;|z|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+      female |  -1.292178   .0382861   -33.75   0.000    -1.367218   -1.217139
+       _cons |   .6568965   .0274378    23.94   0.000     .6031194    .7106736
+------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+        Variable     Sample |    Treated     Controls   Difference         S.E.   T-stat
+----------------------------+-----------------------------------------------------------
+            yobs  Unmatched | 15.9776929   2.49011711   13.4875758   .168796854    79.90
+                        ATT | 15.9776929   3.70040209   12.2772908   4.13574198     2.97
+                        ATU | 2.49011711   8.98196226   6.49184516            .        .
+                        ATE |                            9.3741542            .        .
+----------------------------+-----------------------------------------------------------
+Note: S.E. does not take into account that the propensity score is estimated.
+
+           | psmatch2:
+ psmatch2: |   Common
+ Treatment |  support
+assignment | On suppor |     Total
+-----------+-----------+----------
+ Untreated |     2,509 |     2,509 
+   Treated |     2,491 |     2,491 
+-----------+-----------+----------
+     Total |     5,000 |     5,000 
+
+.         disp &quot;ATE: &quot; r(ate) &quot;, ATT: &quot; r(att)
+ATE: 9.3741542, ATT: 12.277291
+
+. 
+</code></pre>

@@ -61,6 +61,7 @@ Date: <<dd_display: c(current_date)>>
 ~~~~
 <<dd_do>>
 	***Load Data cleaned in PSET 1 for Analysis 
+	*dyndoc "ps4_denker.txt", replace
 	use "${gendatapath}acsrecoded.dta", clear	
 	
 <</dd_do>>

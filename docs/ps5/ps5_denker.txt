@@ -1,0 +1,348 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 5
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 5
+*	CREATED: 	03/04/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty and Dan Mangan		
+*	CALLS UPON:	Generates data needed
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	*set memory 500m, perm // ignored in Stata. See Stata result window. 
+	ssc install psmatch2
+
+	***Set cd for header.txt file to run & opens the folder in Git for this
+	***PSET
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps5/"
+
+	* dyndoc "ps5_denker.txt", replace
+	
+	glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+	glob datapath 		"${projectpath}5. Datasets/"
+	glob gendatapath 	"${projectpath}7. Generated Datasets/"
+
+<</dd_do>>
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 5 
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty & Dan Mangan  
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+## Potential Outcomes Framework 
+
+~~~~
+<<dd_do>>
+	***Set # of obs to 100,000
+	set obs  100000
+	set seed 123456
+
+	***For each individual, draw two potential outcomes represeting knowledge of micro in treated y_1 and untreated y_0 states of the world.
+	cap drop y0 
+	cap drop y1 
+	cap drop effect 
+	generate y0 = rnormal(50, 5)
+	generate y1 = y0 + rnormal(5, 2)
+
+	***Create var that is each individual's effect of having to take prelim second time. 
+	generate effect = y1 - y0 
+<</dd_do>>
+~~~~
+
+
+### Selection Bias
+**If you could observe both potential outcomes for each individual, what would you do?**  
+To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We could then find the mean of this variable to identify the average causal effect across the sample (which is what we do when we make the 'effect' variable above.)   
+
+**Does it match what you expected?**
+~~~~
+<<dd_do>>
+	qui sum effect, meanonly
+	di in red `r(mean)'
+<</dd_do>>
+~~~~
+The mean of the "effect" variable is 5.003. We would expect that this value *would* be close to 5 since the mean of the 'noise' we added to the treated potential outcome is 5.  
+
+Mimic the random assignment that would occur in an experiment. 
+~~~~
+<<dd_do>>
+	***Create var that has a 0.5 prob of being 1 and is 0 otherwise
+	cap drop treated yobs
+	generate treated = (runiform() > 0.5)
+
+	***Create a var that is the observed potential outcome for each individual based on group assignment. 
+	generate yobs = y0
+	replace yobs = y1 if treated == 1
+
+	***Run a reg. to get the difference in means of the observed value of y_i between treated/untreated groups.
+	reg yobs treated
+	disp in red _b[treated] //coef. of interest in on treated
+<</dd_do>>
+~~~~
+**Does this regression coeﬃcient match the true ATE?**   
+The coefficient on the treated dummy is 4.9998, with a standard error of 0.032. We would conclude that this estimate captures the true ATE within its confidence interval.   
+
+Now, mimic the assignemnt that would occur if assignment to the treatment were based on an exam. 
+~~~~
+<<dd_do>>
+
+	cap drop firstprelim 
+	cap drop failed 
+	cap drop secondprelim 
+	cap drop yobs_2
+
+	***Create a score on the first prelim equal to person's actual knowledge level (y_0) and some noise. 
+	generate firstprelim = y0 + rnormal(0, 2)
+
+	***Create a new treated variable equal to 1 iff i's exam score is < 45.
+	generate failed = (firstprelim < 45)
+
+	***Create new observed y var = to potential outcome under assignment into groups via test score. 
+	generate secondprelim = y1 + rnormal(0,2)
+
+	generate yobs_2 = firstprelim
+	replace  yobs_2 = secondprelim if failed == 1
+
+<</dd_do>>
+~~~~
+**What is the sign of the selection bias introduced by this assignment procedure?**   
+When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from  
+
+	Failed is associated with small y0 scores. Therefore y1 will tend to be smaller among the observed treated group (because it is a function of y0) and the y0 will tend to be higher among the observed non-treated group. Therefore this coefficient represents the treatment affect plus the sample difference in y0 between the treated and the non-treated groups
+
+
+**What is the exact magnitude of the selection bias in your sample?**   
+
+
+
+Run a regression to estimate the difference in observed outcomes between treated and untreated groups.   
+~~~~
+<<dd_do>>
+	reg yobs_2 failed
+	disp in red _b[failed]
+	bysort failed: sum firstprelim
+<</dd_do>>
+~~~~
+
+**Is the resulting coeﬃcient what you expected, given your answer to the above questions and our formula from class?**  
+
+
+
+~~~~
+<<dd_do>>
+
+	generate cost = rnormal(-5, 2)
+
+	generate treated3 = 0
+	replace  treated3 = 1 if y1 - y0 - cost > 0
+	generate yobs3 = yobs_2
+	replace  yobs3 = y1 if treated3 == 1
+
+<</dd_do>>
+~~~~
+
+
+
+~~~~
+<<dd_do>>
+
+	reg yobs3 treated3
+	disp in red _b[treated3]
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	sum effect if treated3 == 1, meanonly
+	disp in red  r(mean)
+
+<</dd_do>>
+~~~~
+
+
+### Omitted Variable Bias
+	
+
+
+~~~~
+<<dd_do>>
+
+	use "${datapath}schoolexp.dta", replace
+	reg read4 exppp, robust
+
+<</dd_do>>
+~~~~
+
+~~~~
+<<dd_do>>
+
+	reg read4 exppp lunch, robust
+
+<</dd_do>>
+~~~~
+
+
+
+~~~~
+<<dd_do>>
+
+	reg read4 exppp lunch, robust
+	global beta1cor = _b[exppp]
+	global beta2cor = _b[lunch]
+
+	reg read4 exppp
+	disp _b[exppp] - $beta1cor
+
+	reg lunch exppp
+	disp _b[exppp] * $beta2cor
+
+<</dd_do>>
+~~~~
+
+
+### FWL
+
+
+~~~~
+<<dd_do>>
+
+	reg read4 lunch, robust
+	predict read4_resids, residuals
+	label variable read4_resids "Residualized Student Reading Score (%)"
+
+	reg exppp lunch, robust
+	predict exppp_resids, residuals
+	label variable exppp_resids "Residualized Expenditure per pupil"
+
+	reg read4_resids exppp_resids
+
+	scatter read4 exppp //, scheme(s2mono)
+	graph save bivariate.gph, replace
+	scatter read4_resids exppp_resids //, scheme(s2mono)
+	graph save fwl.gph, replace
+
+	graph combine bivariate.gph fwl.gph
+	graph save combined_graph.gph, replace
+
+<</dd_do>>
+~~~~
+
+### Signing the Bias
+
+
+
+### Matching
+
+~~~~
+<<dd_do>>
+
+	use "${datapath}matching_ps5.dta", clear
+
+	gen te = y1 - y0
+	mean te if female == 1
+	mean te if female == 0
+	mean te
+	bysort female: sum treated
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	sort female
+	bysort female: sum y0 y1
+	bysort female: compare yobs y1
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	reg yobs treated, robust
+
+<</dd_do>>
+~~~~
+
+~~~~
+<<dd_do>>
+
+	bysort female: reg yobs treated, robust
+
+<</dd_do>>
+~~~~
+
+~~~~
+<<dd_do>>
+
+	reg yobs treated##female, robust
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	reg yobs treated female, robust
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	psmatch2 treated female, outcome(yobs) caliper(0.5) ate
+	disp in red "ATE: " r(ate) ", ATT: " r(att)
+
+<</dd_do>>
+~~~~
+
+
+~~~~
+<<dd_do>>
+
+	psmatch2 treated female, outcome(yobs) caliper(0.1) ate
+	disp "ATE: " r(ate) ", ATT: " r(att)
+
+<</dd_do>>
+~~~~
