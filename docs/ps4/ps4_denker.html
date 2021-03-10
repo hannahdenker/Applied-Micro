@@ -47,16 +47,19 @@ try {
 <p>Course: ECON 8848<br />
 Author: Hannah Denker<br />
 Collaborators: Michelle Doughty &amp; Dan Mangan<br />
-Date: 26 Feb 2021</p>
+Date:  9 Mar 2021</p>
 <nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
 <pre><code>.         ***Load Data cleaned in PSET 1 for Analysis 
+.         *dyndoc &quot;ps4_denker.txt&quot;, replace
 .         use &quot;${gendatapath}acsrecoded.dta&quot;, clear       
 
 .         
 </code></pre>
-<h2><a href="#schooling-and-earnings" id="schooling-and-earnings">Schooling and Earnings</a></h2>
-<h5><a href="#run-a-regression-to-estimate-the-conditional-expectation-of-log-earnings-with-years-of-education-as-the-rhs-variable-treat-years-of-education-as-if-it-were-a-continuous-variable" id="run-a-regression-to-estimate-the-conditional-expectation-of-log-earnings-with-years-of-education-as-the-rhs-variable-treat-years-of-education-as-if-it-were-a-continuous-variable">Run a regression to estimate the conditional expectation of log earnings with years of education as the RHS variable. Treat years of education as if it were a continuous variable.</a></h5>
-<pre><code>.         ***These are the three vars of interest. Checking differences beween &quot;educyears&quot; and &quot;educrec&quot; vars. Output not shown
+<h5><a href="#schooling-and-earnings" id="schooling-and-earnings">Schooling and Earnings</a></h5>
+<h2><a href="#cef-log-earnings-on-education" id="cef-log-earnings-on-education">CEF: Log Earnings on Education</a></h2>
+<p>Run a regression to estimate the conditional expectation of log earnings with years of education as the RHS variable. Treat years of education as if it were a continuous variable.</p>
+<pre><code>.         ***These are the three vars of interest. Checking differences between &quot;educyears&quot; and &quot;educrec&quot; va
+&gt; rs. Output not shown.
 .         qui tab  educyears  educrec
 
 .         qui sum  educyears  educrec logearn
@@ -82,8 +85,9 @@ Linear regression                               Number of obs     =  1,043,212
 .         
 </code></pre>
 <p><strong>Give an essential summary of the results.</strong><br />
-For every additional year of education, we would expect about a 13.8% positive difference in logged earnings. We see that this estimate is statistically significant at p &lt; 0.001, suggesting that this association is not due to chance. We also see that the conditional expectation of log earnings for a person with 0 years of education is about 8.39, or about $4403. This is not practically significant as we would not expect a person to enter the workforce with 0 years of education.</p>
-<h5><a href="#create-a-new-variable-called-linearfitted-that-contains-the-fitted-values-from-this-regression" id="create-a-new-variable-called-linearfitted-that-contains-the-fitted-values-from-this-regression">Create a new variable called &ldquo;linearfitted&rdquo; that contains the fitted values from this regression.</a></h5>
+For every additional year of education, we would expect about a 13.8% positive difference in logged earnings. We see that this estimate is statistically significant at p &lt; 0.001, suggesting that this association is not due to chance. We also see that the conditional expectation of log earnings for a person with 0 years of education is about 8.39, or about $ 4,403. This is not practically significant as we would not expect a person to enter the workforce with 0 years of education.</p>
+<h2><a href="#linear-fitted" id="linear-fitted">Linear Fitted</a></h2>
+<p>Create a new variable called &ldquo;linearfitted&rdquo; that contains the fitted values from this regression.</p>
 <pre><code>.         ***Regressing logged earnings on continuous version of &quot;educyears&quot;
 .         cap drop linearfitted 
 
@@ -94,13 +98,15 @@ For every additional year of education, we would expect about a 13.8% positive d
 
 .         
 </code></pre>
-<h5><a href="#run-a-regression-to-estimate-the-same-conditional-expectation-but-treating-the-categories-of-the-yeared-variable-as-if-they-were-not-cardinal-create-a-variable-called-discretefitted-with-the-fitted-values-from-this-regression" id="run-a-regression-to-estimate-the-same-conditional-expectation-but-treating-the-categories-of-the-yeared-variable-as-if-they-were-not-cardinal-create-a-variable-called-discretefitted-with-the-fitted-values-from-this-regression">Run a regression to estimate the same conditional expectation, but treating the categories of the &ldquo;yeared&rdquo; variable as if they were not cardinal. Create a variable called &ldquo;discretefitted&rdquo; with the fitted values from this regression.</a></h5>
-<pre><code>.         ***Create a set of dummies representing each category of education and use these dummies in the regression instead of the single, continuous &quot;educyears
-&gt; &quot; variable.
+<h2><a href="#discrete-fitted" id="discrete-fitted">Discrete Fitted</a></h2>
+<p>Run a regression to estimate the same conditional expectation, but treating the categories of the &ldquo;yeared&rdquo; variable as if they were not cardinal. Create a variable called &ldquo;discretefitted&rdquo; with the fitted values from this regression.</p>
+<pre><code>.         ***Create a set of dummies representing each category of education and use these dummies in the re
+&gt; gression instead of the single, continuous &quot;educyears&quot; variable.
 .         qui tab educyears, gen(educyears_dum) // output not shown
 
 . 
-.         ***Regress logged earnings on set of dummies leaving out reference category of no years of education (educyears_dum1). 
+.         ***Regress logged earnings on set of dummies leaving out reference category of no years of educati
+&gt; on (educyears_dum1). 
 .         cap drop discretefitted 
 
 .         reg logearn educyears_dum2-educyears_dum9, robust
@@ -132,17 +138,19 @@ educyears_dum9 |    1.04647   .0170471    61.39   0.000     1.013058    1.079881
 .         
 </code></pre>
 <p><strong>Write a short paragraph with the essential findings from this specification. How do they differ from the first regression you ran?</strong><br />
-We see that the constant, or the conditional expectation of logged earnings for a person with a value of 0 for this variable (no education or preschool), is similar to what was estimated for the continuous educational attainment variable. The constant in this specification is 8.47, or about $4770. Once again, this estimate is not necessarily meaningful as we wouldn&rsquo;t expect many people to enter the labor market with zero years of education. Additionally, we see that the first four indicators of educational attainment (educyears_dum2-5) are not statistically different from zero. This suggests that achieving each of these levels of education is not associated with differences in logged earnings relative to having no years of education (the reference category). This makes sense because the highest level of education represented by this subset of the indicators corresponds with a 10th grade education, which we would assume would be about the earliest a student could leave school for work due to mandatory schooling laws. Interestingly, the &ldquo;educyears_dum6&rdquo; indicator (corresponding to an 11th grade education) is negatively associated with the outcome. This also makes sense if we think about the opportunity cost associated with leaving before attaining a high school degree. The last three indicators, representing at least a high school degree or higher, are positively associated with logged earnings and are all statistically significant at the p&lt;0.001 level.</p>
+We see that the constant, or the conditional expectation of logged earnings for a person with a value of 0 for this variable (no education or preschool), is similar to what was estimated for the continuous educational attainment variable. The constant in this specification is 8.47, or about $ 4,770. Once again, this estimate is not necessarily meaningful as we wouldn&rsquo;t expect many people to enter the labor market with zero years of education. Additionally, we see that the first four indicators of educational attainment (educyears_dum2-5) are not statistically different from zero. This suggests that achieving each of these levels of education is not associated with differences in logged earnings relative to having no years of education (the reference category). This makes sense because the highest level of education represented by this subset of the indicators corresponds with a 10th grade education, which we would assume would be about the earliest a student could leave school for work due to mandatory schooling laws. Interestingly, the &ldquo;educyears_dum6&rdquo; indicator (corresponding to an 11th grade education) is negatively associated with the outcome. This also makes sense if we think about the opportunity cost associated with leaving before attaining a high school degree. The last three indicators, representing at least a high school degree or higher, are positively associated with logged earnings and are all statistically significant at the p&lt;0.001 level.</p>
 <p>In short, we can see from this specification that certain additional years of education are more strongly associated with logged earnings than others, which suggests that a linear relationship might obscure important patterns in the data.</p>
-<h5><a href="#make-an-overlaid-graph-with-line-graphs-of-the-fitted-values-from-both-regressions" id="make-an-overlaid-graph-with-line-graphs-of-the-fitted-values-from-both-regressions">Make an overlaid graph with line graphs of the fitted values from both regressions.</a></h5>
+<h2><a href="#graph-discrete-v-linear-fits" id="graph-discrete-v-linear-fits">Graph: Discrete v. Linear Fits</a></h2>
+<p>Make an overlaid graph with line graphs of the fitted values from both regressions.</p>
 <pre><code>.         qui codebook linearfitted discretefitted
 
 . 
-.         ***Each set of predicted values has 9 unique values. This makes sense if we think about how we are running a simple regression where each of the RHS va
-&gt; rs has only 9 values (even the &quot;continuous&quot; version). So we should see a scatter with points &quot;stacked&quot; along 9 points on the x-axis for each specification. 
+.         ***Each set of predicted values has 9 unique values. This makes sense if we think about how we are
+&gt;  running a simple regression where each of the RHS vars has only 9 values (even the &quot;continuous&quot; version).
+&gt;  So we should see a scatter with points &quot;stacked&quot; along 9 points on the x-axis for each specification. 
 .         
-.         ***This graph takes forever to make with all of the observations so I'm collapsing using the means of the predicted values and logged earnings by the d
-&gt; ifferent values of educyears (x-axis variable)
+.         ***This graph takes forever to make with all of the observations so I'm collapsing using the means
+&gt;  of the predicted values and logged earnings by the different values of educyears (x-axis variable)
 .         preserve 
 
 .                 collapse (mean) logearn linearfitted discretefitted , by(educyears)
@@ -162,89 +170,414 @@ We see that the constant, or the conditional expectation of logged earnings for 
 <img src="scatter_educ.png" height="400" >
 <p><strong>Based on this graph, how do you feel about approximating the CEF as a linear function of the <em>single yeared</em> variable</strong><br />
 The graphical evidence supports our conclusions drawn from interpretting coefficients from the two regression specifications. We see that using the continuous version of the educational attainment variable masks important variation in the predicted values of the outcome variable. Thus, approximating the CEF as a linear function of the <em>single yeared</em> variable does not seem like a good choice if our research question is centered on the assocation between educational achievement and annual earnings.</p>
-<h2><a href="#experience-and-earnings" id="experience-and-earnings">Experience and Earnings</a></h2>
-<h5><a href="#run-a-regression-of-earnings-not-log-earnings-on-experience-and-experience-squared" id="run-a-regression-of-earnings-not-log-earnings-on-experience-and-experience-squared">Run a regression of earnings (not log earnings) on experience and experience squared.</a></h5>
-<pre><code>.         ***Limit sample to observations with annual income greater than zero so that the sample will match that used when we use logged income. 
+<h5><a href="#experience-and-earnings" id="experience-and-earnings">Experience and Earnings</a></h5>
+<h2><a href="#cef-earnings-on-experience" id="cef-earnings-on-experience">CEF: Earnings on Experience</a></h2>
+<p>Run a regression of earnings (not log earnings) on experience and experience squared.</p>
+<pre><code>.         ***For some reason, my years of experience variable has negative values still. I *thought* that I 
+&gt; had recoded this in first pset to not include negative values, but when I tab it now there are still negat
+&gt; ive values and this seems problematic with the regressions we are running now. So, I'm going to go ahead a
+&gt; nd recode these negative values as &quot;missing&quot; now. 
+.         qui tab exper, mi
+
+.         replace exper = . if exper &lt; 0
+(11,488 real changes made, 11,488 to missing)
+
+. 
+.         ***Limit sample to observations with annual income greater than zero so that the sample will match
+&gt;  that used when we use logged income. 
 .         reg incwage exper expersq if incwage &gt; 0, robust
 
-Linear regression                               Number of obs     =  1,043,212
-                                                F(2, 1043209)     =   71970.21
+Linear regression                               Number of obs     =  1,031,876
+                                                F(2, 1031873)     =   63448.35
                                                 Prob &gt; F          =     0.0000
-                                                R-squared         =     0.0652
-                                                Root MSE          =      47958
+                                                R-squared         =     0.0596
+                                                Root MSE          =      48209
 
 ------------------------------------------------------------------------------
              |               Robust
      incwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-       exper |   3814.429   12.65501   301.42   0.000     3789.626    3839.233
-     expersq |  -82.84785   .3629845  -228.24   0.000    -83.55928   -82.13641
-       _cons |   11906.87   65.04905   183.04   0.000     11779.38    12034.37
+       exper |   3829.021   13.38993   285.96   0.000     3802.777    3855.265
+     expersq |  -83.18408   .3775835  -220.31   0.000    -83.92413   -82.44403
+       _cons |   11776.13    72.6382   162.12   0.000     11633.76    11918.49
 ------------------------------------------------------------------------------
 
 </code></pre>
-<p><strong>Interpret the results of this regression.</strong></p>
-<h5><a href="#run-a-regression-of-log-earnings-on-experience-and-experience-squared" id="run-a-regression-of-log-earnings-on-experience-and-experience-squared">Run a regression of log earnings on experience and experience squared.</a></h5>
+<p><strong>Interpret the results of this regression.</strong><br />
+For people with 0 years of experience, we would estimate that they earned, about $$$11,800 per year, on average. The slope on &ldquo;exper&rdquo; can be interpreted as the instantaneous rate of growth (i.e., the instantaneous slope) when experience is equal to zero. We can also call the slope on &ldquo;exper&rdquo; as the marginal gain of the first year of experience, which is equal to about $ 3,800.</p>
+<p>The slope on &ldquo;expersq&rdquo; can be thought of as the rate of acceleration. Since the sign on the &ldquo;expersq&rdquo; coefficient is negative, we can interpret this as the function is becoming <em>more negative</em> as values of X increase. We could also say that since we have a positive coefficient on &ldquo;exper&rdquo; and a negative coefficient on &ldquo;expersq&rdquo;, that means that as people become more experienced the effect of experience is lessoned on their income. Additionally, we can see that the sqaured term is statistically significant at the p&lt;0.001 level. This suggests that the coefficient on this term is not equal to zero, and therefore the estimated slope of the CEF is not constant. Finally, we can calculate the maximum of the parabola (x*) using the two betas, which equals about 23 years of experience.</p>
+<h2><a href="#cef-logged-earnings-on-experience" id="cef-logged-earnings-on-experience">CEF: <em>Logged</em> Earnings on Experience</a></h2>
+<p>Run a regression of log earnings on experience and experience squared.</p>
 <pre><code>.         reg logearn exper expersq, robust
 
-Linear regression                               Number of obs     =  1,043,212
-                                                F(2, 1043209)     =   80664.94
+Linear regression                               Number of obs     =  1,031,876
+                                                F(2, 1031873)     =   66819.01
                                                 Prob &gt; F          =     0.0000
-                                                R-squared         =     0.1621
-                                                Root MSE          =     .95381
+                                                R-squared         =     0.1400
+                                                Root MSE          =     .95142
 
 ------------------------------------------------------------------------------
              |               Robust
      logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-       exper |   .1258925   .0003506   359.05   0.000     .1252053    .1265798
-     expersq |   -.002726   9.03e-06  -301.94   0.000    -.0027437   -.0027083
-       _cons |   9.189244   .0029542  3110.62   0.000     9.183454    9.195034
+       exper |   .1201904   .0003666   327.86   0.000     .1194719    .1209089
+     expersq |  -.0025958   9.33e-06  -278.17   0.000    -.0026141   -.0025775
+       _cons |   9.241277   .0031235  2958.60   0.000     9.235155    9.247399
 ------------------------------------------------------------------------------
 
 </code></pre>
-<p><strong>Interpret the results of this regression. Which speciﬁcation do you prefer and why?</strong></p>
-<h5><a href="#run-the-log-earnings-regression-limiting-the-sample-to-non-immigrants" id="run-the-log-earnings-regression-limiting-the-sample-to-non-immigrants">Run the log earnings regression, limiting the sample to non-immigrants.</a></h5>
+<p><strong>Interpret the results of this regression. Which specification do you prefer and why?</strong></p>
+<p>The geometric mean for people with 0 years of experience is the exponentiated value of the intercept (9.24), or about $ 10,314. We also see that the return to wages for the first year of experience (the coefficient on &ldquo;exper&rdquo;) is about 12%.  The output for the logged outcome includes a coefficient on the squared experience variable that is negative. This is consistent with our previous results that suggests each additional year of experience results in a decreasing return.</p>
+<p>Our regression output with logged earnings as an outcome is the preferred specification since we would assume that years of experience affects earnings differentially across time and across people. In other words since we can’t assume that a one-unit change in years of experience leads to the same change in earnings across the sample, we want to be able to talk about the change in earnings in terms of percent change (and therefore need logged earnings).</p>
+<h2><a href="#cef-logged-earnings-on-experience-and-immigrant-status" id="cef-logged-earnings-on-experience-and-immigrant-status">CEF: Logged Earnings on Experience and Immigrant Status</a></h2>
+<p>Run the log earnings regression, limiting the sample to non-immigrants.</p>
 <pre><code>.         reg logearn exper expersq if immigrant==0, robust 
 
-Linear regression                               Number of obs     =    884,721
-                                                F(2, 884718)      =   76660.25
+Linear regression                               Number of obs     =    874,278
+                                                F(2, 874275)      =   63163.71
                                                 Prob &gt; F          =     0.0000
-                                                R-squared         =     0.1781
-                                                Root MSE          =     .95123
+                                                R-squared         =     0.1541
+                                                Root MSE          =     .94888
 
 ------------------------------------------------------------------------------
              |               Robust
      logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-       exper |   .1310546   .0003849   340.48   0.000     .1303001     .131809
-     expersq |  -.0028439   .0000101  -281.78   0.000    -.0028637   -.0028241
-       _cons |   9.163987   .0031492  2909.90   0.000     9.157814    9.170159
+       exper |   .1251367   .0004044   309.44   0.000     .1243441    .1259293
+     expersq |  -.0027062   .0000105  -258.28   0.000    -.0027268   -.0026857
+       _cons |   9.216546   .0033484  2752.51   0.000     9.209983    9.223108
 ------------------------------------------------------------------------------
 
+.         est sto r1 // store results to compare across models below
+
 </code></pre>
-<h5><a href="#run-the-log-earnings-regression-limiting-the-sample-to-immigrants" id="run-the-log-earnings-regression-limiting-the-sample-to-immigrants">Run the log earnings regression, limiting the sample to immigrants.</a></h5>
+<p>Run the log earnings regression, limiting the sample to immigrants.</p>
 <pre><code>.         reg logearn exper expersq if immigrant==1, robust 
 
-Linear regression                               Number of obs     =    158,491
-                                                F(2, 158488)      =    5710.71
+Linear regression                               Number of obs     =    157,598
+                                                F(2, 157595)      =    5015.76
                                                 Prob &gt; F          =     0.0000
-                                                R-squared         =     0.0811
-                                                Root MSE          =     .95798
+                                                R-squared         =     0.0707
+                                                Root MSE          =     .95568
 
 ------------------------------------------------------------------------------
              |               Robust
      logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-       exper |   .0962887   .0009054   106.34   0.000     .0945141    .0980634
-     expersq |  -.0021095   .0000211  -100.10   0.000    -.0021508   -.0020682
-       _cons |   9.375944   .0086809  1080.07   0.000     9.358929    9.392958
+       exper |   .0921666   .0009228    99.87   0.000     .0903579    .0939754
+     expersq |  -.0020227   .0000214   -94.73   0.000    -.0020646   -.0019809
+       _cons |   9.417724   .0088932  1058.98   0.000     9.400294    9.435155
+------------------------------------------------------------------------------
+
+.         est sto r2 // store results to compare across models below
+
+</code></pre>
+<p><strong>What conclusions can you draw based on these separate regressions?</strong><br />
+From the separate regressions, we see that the geometric mean earnings among people with 0 years of experience is slightly larger for immigrants than non-immigrants ($ 12,300 and $ 10,300, respectively). The results also suggest that the return to wages for years of experience decreases with additional years of experience for both groups as the coefficient on the squared experience variable is negative in both regression outputs. Finally, we see that the return on earnings for the first year of experience is about 13% for non-immigrants and about 9% for immigrants, although we cannot use these regressions results to affirm that these values are statistically different from each other.</p>
+<p>Run an interaction model that allows you to test whether the CEF has the same slope for immigrants and non-immigrants. HINT: If you have speciﬁed this regression correctly, you should receive identical parameter estimates for all of the CEFs suggested by the separate regressions.</p>
+<pre><code>.         ***Create an interaction between immigrant and experience and immigrant and experience squared. 
+.         cap drop immigrant_exper
+
+.         generate immigrant_exper = immigrant*exper
+(11,488 missing values generated)
+
+.         qui tab immigrant_exper, mi // make sure var made correctly
+
+. 
+.         cap drop immigrant_expersq
+
+.         generate immigrant_expersq = immigrant*expersq
+
+. 
+.         ***Run regression with interaction terms 
+.         reg logearn immigrant exper expersq immigrant_exper immigrant_expersq , robust
+
+Linear regression                               Number of obs     =  1,031,876
+                                                F(5, 1031870)     =   27555.82
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.1427
+                                                Root MSE          =     .94992
+
+-----------------------------------------------------------------------------------
+                  |               Robust
+          logearn |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+------------------+----------------------------------------------------------------
+        immigrant |   .2011787   .0095026    21.17   0.000     .1825539    .2198035
+            exper |   .1251367   .0004044   309.44   0.000     .1243441    .1259293
+          expersq |  -.0027062   .0000105  -258.28   0.000    -.0027268   -.0026857
+  immigrant_exper |    -.03297   .0010076   -32.72   0.000    -.0349448   -.0309953
+immigrant_expersq |   .0006835   .0000238    28.74   0.000     .0006369    .0007301
+            _cons |   9.216546   .0033484  2752.51   0.000     9.209983    9.223109
+-----------------------------------------------------------------------------------
+
+.         est sto r3 // store results to compare across models below
+
+.         test immigrant_exper=immigrant_expersq=0
+
+ ( 1)  immigrant_exper - immigrant_expersq = 0
+ ( 2)  immigrant_exper = 0
+
+       F(  2,1031870) =  601.28
+            Prob &gt; F =    0.0000
+
+. 
+.         estout r1 r2 r3 // compare models to make sure interaction specified correctly
+
+---------------------------------------------------
+                       r1           r2           r3
+                        b            b            b
+---------------------------------------------------
+exper            .1251367     .0921666     .1251367
+expersq         -.0027062    -.0020227    -.0027062
+immigrant                                  .2011787
+immigrant_~r                                -.03297
+immigrant_~q                               .0006835
+_cons            9.216546     9.417724     9.216546
+---------------------------------------------------
+
+</code></pre>
+<p><strong>Can you reject the null that the slope of the CEF does not depend on immigrant status? HINT: Testing this null requires testing a joint null, and thus the “test” command.</strong></p>
+<p>By including both the experience and the squared experience terms in a test of a joint null (that these terms are equal to zero), we see that the associated F-stat is 601.28 and p-value is 0.000. We can then reject the null hypothesis that differences in returns to earnings between immigrants and non-immigrants is the same at all experience levels.</p>
+<h5><a href="#marital-status-and-earnings-males-only" id="marital-status-and-earnings-males-only">Marital Status and Earnings (Males Only)</a></h5>
+<p>For the regressions in this section, I&rsquo;m going to limit the sample to men.</p>
+<pre><code>.         keep if female==0 // keeping only male obs. 
+(526,422 observations deleted)
+
+</code></pre>
+<h2><a href="#cef-earnings-on-marital-status-single-dummy" id="cef-earnings-on-marital-status-single-dummy">CEF: Earnings on Marital Status Single Dummy</a></h2>
+<p>Run a regression of earnings (not log earnings) on a dummy variable that is 1 if the man is “married, spouse present” and zero otherwise. <strong>Interpret the regression results.</strong></p>
+<pre><code>.                 ***Create dummy var for man's marital status where 1=married
+.                 qui codebook marst // check coding for &quot;marital status&quot; var
+
+. 
+.                 cap drop married
+
+.                 generate married=. 
+(578,722 missing values generated)
+
+.                 replace  married=1 if marst==1
+(345,679 real changes made)
+
+.                 replace  married=0 if marst==2 | marst==3 | marst==4 | marst==5 | marst==6
+(233,043 real changes made)
+
+.                 tab marst married , mi
+
+                      |        married
+       Marital status |         0          1 |     Total
+----------------------+----------------------+----------
+Married, spouse prese |         0    345,679 |   345,679 
+Married, spouse absen |    11,901          0 |    11,901 
+            Separated |     9,081          0 |     9,081 
+             Divorced |    48,184          0 |    48,184 
+              Widowed |     2,264          0 |     2,264 
+ Never married/single |   161,613          0 |   161,613 
+----------------------+----------------------+----------
+                Total |   233,043    345,679 |   578,722 
+
+. 
+.                 ***Regress earnings (non-log) on married dummy
+.                 reg incwage married, robust 
+
+Linear regression                               Number of obs     =    578,722
+                                                F(1, 578720)      =   37721.33
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0521
+                                                Root MSE          =      56587
+
+------------------------------------------------------------------------------
+             |               Robust
+     incwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   27036.64   139.2064   194.22   0.000      26763.8    27309.48
+       _cons |   34224.68   84.23446   406.30   0.000     34059.58    34389.78
 ------------------------------------------------------------------------------
 
 </code></pre>
-<p><strong>What conclusions can you draw based on these separate regressions?</strong></p>
-<h5><a href="#run-an-interaction-model-that-allows-you-to-test-whether-the-cef-has-the-same-slope-for-immigrants-and-non-immigrants-hint-if-you-have-speciﬁed-this-regression-correctly-you-should-receive-identical-parameter-estimates-for-all-of-the-cefs-suggested-by-the-separate-regressions" id="run-an-interaction-model-that-allows-you-to-test-whether-the-cef-has-the-same-slope-for-immigrants-and-non-immigrants-hint-if-you-have-speciﬁed-this-regression-correctly-you-should-receive-identical-parameter-estimates-for-all-of-the-cefs-suggested-by-the-separate-regressions">Run an interaction model that allows you to test whether the CEF has the same slope for immigrants and non-immigrants. HINT: If you have speciﬁed this regression correctly, you should receive identical parameter estimates for all of the CEFs suggested by the separate regressions.</a></h5>
-<pre><code>. 
+<p>Among men who are not married with a spouse present, we estimate their expected earnings to be about $ 34,200 on average. When males are married with their spouse present, we expect that they earn about $ 27,000 more  annually, or about $ 61,300. These results are statistically significant at p &lt; 0.001, suggesting that we would not see results as big or bigger than these by chance.</p>
+<h2><a href="#cef-earnings-on-marital-status-categorical-dummy-set" id="cef-earnings-on-marital-status-categorical-dummy-set">CEF: Earnings on Marital Status Categorical Dummy Set</a></h2>
+<p>Run a regression with earnings (not log earnings) as the dependent variable that allows for a diﬀerent conditional expectation for all values of the “marst” variable. <strong>Interpret this regression.</strong></p>
+<pre><code>.                 ***Create a set of dummy vars for all possible marital status
+.                 cap drop marst_dum*
+
+.                 tab marst, gen(marst_dum)
+
+         Marital status |      Freq.     Percent        Cum.
+------------------------+-----------------------------------
+Married, spouse present |    345,679       59.73       59.73
+ Married, spouse absent |     11,901        2.06       61.79
+              Separated |      9,081        1.57       63.36
+               Divorced |     48,184        8.33       71.68
+                Widowed |      2,264        0.39       72.07
+   Never married/single |    161,613       27.93      100.00
+------------------------+-----------------------------------
+                  Total |    578,722      100.00
+
+. 
+.                 ***Create global with set of marst dummies to use in regression leaving out the &quot;married w
+&gt; ith spouse present&quot; as the omitted category
+.                 glob marst_dum_list &quot;&quot;
+
+.                 forvalues i=2/6 {
+  2.                         glob marst_dum_list &quot; ${marst_dum_list} marst_dum`i'&quot;
+  3.                 } // close forvalues loop 
+
+. 
+.                 ***Regress earnings (non-log) on married dummy
+.                 reg incwage ${marst_dum_list}, robust // married with spouse present is omitted cat. 
+
+Linear regression                               Number of obs     =    578,722
+                                                F(5, 578716)      =    9710.79
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0575
+                                                Root MSE          =      56423
+
+------------------------------------------------------------------------------
+             |               Robust
+     incwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+  marst_dum2 |  -22744.75    453.077   -50.20   0.000    -23632.77   -21856.74
+  marst_dum3 |  -19990.35   518.3892   -38.56   0.000    -21006.38   -18974.32
+  marst_dum4 |  -15300.05   240.6958   -63.57   0.000     -15771.8   -14828.29
+  marst_dum5 |  -15059.38   1098.083   -13.71   0.000    -17211.59   -12907.17
+  marst_dum6 |   -31415.6   143.0997  -219.54   0.000    -31696.07   -31135.13
+       _cons |   61261.32    110.829   552.76   0.000      61044.1    61478.54
+------------------------------------------------------------------------------
+
+.                 ***Testing null that men of all marital statuses are paid equally. 
+.                 test marst_dum2=marst_dum3=marst_dum4=marst_dum5=marst_dum6=0
+
+ ( 1)  marst_dum2 - marst_dum3 = 0
+ ( 2)  marst_dum2 - marst_dum4 = 0
+ ( 3)  marst_dum2 - marst_dum5 = 0
+ ( 4)  marst_dum2 - marst_dum6 = 0
+ ( 5)  marst_dum2 = 0
+
+       F(  5,578716) = 9710.79
+            Prob &gt; F =    0.0000
+
+.                 ***Testing null that men of all marital statuses are equal to each other (but not necessar
+&gt; ily zero) 
+.                 test marst_dum2=marst_dum3=marst_dum4=marst_dum5=marst_dum6
+
+ ( 1)  marst_dum2 - marst_dum3 = 0
+ ( 2)  marst_dum2 - marst_dum4 = 0
+ ( 3)  marst_dum2 - marst_dum5 = 0
+ ( 4)  marst_dum2 - marst_dum6 = 0
+
+       F(  4,578716) = 1364.77
+            Prob &gt; F =    0.0000
+
+. 
 </code></pre>
-<p><strong>Can you reject the null that the slope of the CEF does not depend on immigrant status? HINT: Testing this null requires testing a joint null, and thus the “test” command.</strong></p>
-<h2><a href="#marital-status-and-earnings" id="marital-status-and-earnings">Marital Status and Earnings</a></h2>
+<p>The results of the regression with the set of categorical explanatory variables representing different marital statuses indicate that males who are married with their spouse present earn about $ 61,300, on average. We see that this value (represented in the estimated intercept in this model) is identical to what we found using the &ldquo;married&rdquo; dummy before. We can also see that males belonging to other marital status categories all earn less annually (all coefficients are negatively signed), and that these differences are substantial and statistically significant at the p &lt; 0.001 level.</p>
+<p>Run a test of the null hypothesis that men of all marital statuses are paid equally. <strong>Can you reject this null?</strong><br />
+To understand whether marital statuses are paid equally, we want to test that the coefficients on each of the marital statuses are equal to the marital status category that was omitted (married, spouse present). Any coefficient on one of the set of marital status dummies that is not significantly different from zero would indicate that said marital status was <em>not</em> associated with different earnings than the omitted marital status category. As noted above, we see that all of the coefficients in this specification are statistically different from 0 at the p &lt; 0.001 level, which suggests that we can reject the null hypothesis that these categories are paid the same as the &ldquo;married, spouse present&rdquo; category.</p>
+<p>Additionally, we want to run a test that the coefficients on each of the marital status dummies included in the regression are statistically different from each other. We see from the results of this test that they <em>are</em> statistically different from each other, and we can reject the null hypothesis that all marital statuses are paid equally.</p>
+<p>Run a test of the null hypothesis that the diﬀerences in earnings between men who are “married, spouse present” and men in each of the other categories are all equal to each other, but not necessarily equal to zero. <strong>Can you reject this null hypothesis?</strong></p>
+<p>We can also test an equality statement that each of the coefficients is equal to each other by omitting the &ldquo;=0&rdquo; part of the test command line. From these results, we see that the coefficients on each of the marital category dummies is statistically different from each of the other coefficients. Thus, we can reject the null hypothesis that differences in earnings between men who are “married, spouse present” and men in each of the other categories are all equal to each other.</p>
+<p><strong>What do you conclude based on the results of these hypothesis tests?</strong><br />
+From these results, we can conclude that each category of marital status is associated with a different annual wage and that these results are not due to chance.</p>
+<h5><a href="#housing-price-data" id="housing-price-data">Housing Price Data</a></h5>
+<p>To answer questions about housing prices, we need to load a new dataset.</p>
+<pre><code>.         ***Load Housing Data
+.         use &quot;${datapath}houseprice.dta&quot;, clear  
+
+.         
+</code></pre>
+<h2><a href="#regress-house-price-on-home-size" id="regress-house-price-on-home-size">Regress House Price on Home Size</a></h2>
+<p>Run a regression of price on size of home in square feet (sqrft).  <strong>Interpret this regression, including the magnitude and statistical signiﬁcance of both coeﬃcients.</strong></p>
+<pre><code>.         reg price sqrft, rob
+
+Linear regression                               Number of obs     =         88
+                                                F(1, 86)          =      51.19
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.6208
+                                                Root MSE          =     63.617
+
+------------------------------------------------------------------------------
+             |               Robust
+       price |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+       sqrft |    .140211   .0195978     7.15   0.000     .1012519      .17917
+       _cons |   11.20415   36.80591     0.30   0.762    -61.96359    84.37188
+------------------------------------------------------------------------------
+
+</code></pre>
+<p>Based on these regression results, we would estimate that a house with 0 square feet would be worth about $ 11,000 (although this estimate does not make any sense practically). Additionally, we see that for every additional square foot of home is associated with about a $ 140 increase in home price. This estimate is statistically significant at the p &lt; 0.001 level.</p>
+<h2><a href="#regress-logged-house-price-on-logged-square-feet" id="regress-logged-house-price-on-logged-square-feet">Regress Logged House Price on Logged Square Feet.</a></h2>
+<p>Run a regression of log(price) on log(square feet). Interpret the default regression output.</p>
+<pre><code>.         reg lprice lsqrft, rob
+
+Linear regression                               Number of obs     =         88
+                                                F(1, 86)          =      79.25
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.5530
+                                                Root MSE          =     .20414
+
+------------------------------------------------------------------------------
+             |               Robust
+      lprice |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+      lsqrft |   .8726595   .0980257     8.90   0.000     .6777909    1.067528
+       _cons |  -.9751299   .7446366    -1.31   0.194    -2.455418    .5051587
+------------------------------------------------------------------------------
+
+</code></pre>
+<p>When both the dependent and independent variables are logged, we can interpret the regression output in terms of elasticity - the association between a one-percent positive change in x with a corresponding percent change in y. In this context we see that when we increase square footage by 1%, the price of the house increases by about 0.9%. This estimate is statistically significant at the p &lt; 0.001 level with the standard error estimated to be about 0.10.</p>
+<p><strong>Can you reject the null of unit-elasticity, i.e. a house that is 1 percent larger will sell for 1 percent more?</strong> Because the standard error is about 0.10, the 95% confidence interval is estimated to include coefficients between .6777909 and 1.067528. Thus, we cannot reject the null of unit-elasticity when alpha=0.05 because 1.0 is included in the confidence interval.</p>
+<p>Run a regression of price on assessed value.  <strong>Interpret the slope coeﬃcient.</strong></p>
+<pre><code>.         reg price assess, rob
+
+Linear regression                               Number of obs     =         88
+                                                F(1, 86)          =     205.97
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.8195
+                                                Root MSE          =     43.887
+
+------------------------------------------------------------------------------
+             |               Robust
+       price |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+      assess |   .9755538   .0679752    14.35   0.000     .8404236    1.110684
+       _cons |  -14.47179   20.61722    -0.70   0.485    -55.45747     26.5139
+------------------------------------------------------------------------------
+
+.         test assess=1
+
+ ( 1)  assess = 1
+
+       F(  1,    86) =    0.13
+            Prob &gt; F =    0.7200
+
+</code></pre>
+<p>We estimate that a $ 1,000 increase in the assessed value of a home is associated with about a $ 976 increase in the price of the home.</p>
+<p>Run a regression of log(price) on the log of the value assigned to the house by the assessor.  <strong>Interpret the slope coeﬃcient.</strong></p>
+<pre><code>.         reg lprice lassess, rob
+
+Linear regression                               Number of obs     =         88
+                                                F(1, 86)          =     225.97
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.7656
+                                                Root MSE          =     .14782
+
+------------------------------------------------------------------------------
+             |               Robust
+      lprice |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     lassess |   1.013407    .067415    15.03   0.000     .8793904    1.147423
+       _cons |  -.1614743   .3897971    -0.41   0.680    -.9363653    .6134167
+------------------------------------------------------------------------------
+
+.         test lassess=1
+
+ ( 1)  lassess = 1
+
+       F(  1,    86) =    0.04
+            Prob &gt; F =    0.8428
+
+</code></pre>
+<p>When we log both the dependent and independent variables, we can once again describe the estimated relationship modeled in our regression in terms of percent change. Therefore, we estimate that a 1% positive increase in assessed value (the independent variable) is associated with about a 1.01% increase in home price (se = 0.067).</p>
+<p><strong>In each of the above regressions, how would you test the null hypothesis that “Assessors can accurately determine the differences in values of homes?&quot; Based on the regression output, would you be able to reject that null in either specification?”</strong></p>
+<p>To test the null hypothesis that “Assessors can accurately determine the diﬀerences in values of homes?&quot;&rsquo;, we would want to test that the coefficients on the &ldquo;assess&rdquo; variable was equal to 1.0 (percent and thousands of dollars, respectively). A coefficient on &ldquo;assess&rdquo; equal to one of these two values would suggest that there was a 1-to-1 relationship between the value of a home appraised by an assessor and the actual price increase, or that an assessor was in fact accurately determining the differences in home value.</p>
+<p>In both specifications, the relevant confidence interval includes the value that we would expect to see (1.0) if assessors <em>were</em> able to accurately determine the differences in values of homes. Additionally, we cannot reject that each of these coefficients is equal to 1 when we include a test of equality after each regression. Therefore, we cannot reject the null hypothesis that assessors can accurately determine differences in values of homes.</p>
