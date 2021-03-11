@@ -1,0 +1,1181 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    htmlTableOfContents();
+} );                        
+
+function htmlTableOfContents( documentRef ) {
+    var documentRef = documentRef || document;
+    var toc = documentRef.getElementById("toc");
+//  Use headings inside <article> only:
+//  var headings = [].slice.call(documentRef.body.querySelectorAll('article h1, article h2, article h3, article h4, article h5, article h6'));
+    var headings = [].slice.call(documentRef.body.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach(function (heading, index) {
+        var ref = "toc" + index;
+        if ( heading.hasAttribute( "id" ) ) 
+            ref = heading.getAttribute( "id" );
+        else
+            heading.setAttribute( "id", ref );
+
+        var link = documentRef.createElement( "a" );
+        link.setAttribute( "href", "#"+ ref );
+        link.textContent = heading.textContent;
+
+        var div = documentRef.createElement( "div" );
+        div.setAttribute( "class", heading.tagName.toLowerCase() );
+        div.appendChild( link );
+        toc.appendChild( div );
+    });
+}
+
+
+try {
+    module.exports = htmlTableOfContents;
+} catch (e) {
+    // module.exports is not defined
+}
+</script>
+</head>
+<h1><a href="#problem-set-6" id="problem-set-6">Problem Set 6</a></h1>
+<p>Course: ECON 8848<br />
+Author: Hannah Denker<br />
+Collaborators: Michelle Doughty Date: 10 Mar 2021</p>
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+<h2><a href="#open-data-and-prepare-for-analysis" id="open-data-and-prepare-for-analysis">Open data and Prepare for Analysis</a></h2>
+<p>Load the Davis (AER, 2004) housing data.</p>
+<pre><code>.         use &quot;${datapath}davishousing.dta&quot;, clear
+
+</code></pre>
+<h3><a href="#ids-and-time" id="ids-and-time">IDs and Time</a></h3>
+<p>The data are quasi-panel. The parcel id could become cumbersome. Use the &ldquo;group&rdquo; part of &ldquo;egen&rdquo; to create a variable called &ldquo;id&rdquo; that creates unique ids for each house.</p>
+<pre><code>.         egen id = group(parcel)
+
+.         order id, first
+
+</code></pre>
+<p>This data lacks a consistent time variable that STATA can understand. Combine the year and month data into a variable called &ldquo;date&rdquo; in a format that STATA understands.</p>
+<pre><code>.         cap drop date
+
+.         generate date = ym(year, month)
+
+</code></pre>
+<p>Tabulate the values of date. Notice that this variable now has a linear interpretation with each value corresponding to a particular month, and an increase of 1 in date corresponding with one month later.</p>
+<pre><code>.         tab date if year==1990
+
+       date |      Freq.     Percent        Cum.
+------------+-----------------------------------
+        360 |         51        8.16        8.16
+        361 |         39        6.24       14.40
+        362 |         38        6.08       20.48
+        363 |         76       12.16       32.64
+        364 |         46        7.36       40.00
+        365 |         48        7.68       47.68
+        366 |         62        9.92       57.60
+        367 |         73       11.68       69.28
+        368 |         55        8.80       78.08
+        369 |         50        8.00       86.08
+        370 |         47        7.52       93.60
+        371 |         40        6.40      100.00
+------------+-----------------------------------
+      Total |        625      100.00
+
+</code></pre>
+<p><strong>What is the value of &ldquo;date&rdquo; for January 2000?</strong></p>
+<p>Now, use the command &ldquo;format date %tm&rdquo; to tell STATA that they are monthly codes.</p>
+<pre><code>.         format date %tm
+
+</code></pre>
+<p>Tabulate the values of date again.</p>
+<pre><code>.         tab date if year==1990
+
+       date |      Freq.     Percent        Cum.
+------------+-----------------------------------
+     1990m1 |         51        8.16        8.16
+     1990m2 |         39        6.24       14.40
+     1990m3 |         38        6.08       20.48
+     1990m4 |         76       12.16       32.64
+     1990m5 |         46        7.36       40.00
+     1990m6 |         48        7.68       47.68
+     1990m7 |         62        9.92       57.60
+     1990m8 |         73       11.68       69.28
+     1990m9 |         55        8.80       78.08
+    1990m10 |         50        8.00       86.08
+    1990m11 |         47        7.52       93.60
+    1990m12 |         40        6.40      100.00
+------------+-----------------------------------
+      Total |        625      100.00
+
+</code></pre>
+<p><strong>See the difference?</strong> Yes, the original date variable ranged from 360-371 when equal to the year 1990 and months January - December. However, when we apply the formatting, we see that these values have a label that clearly indicates the year (1990) and the month number (m1-m12) making it easier to interpret.</p>
+<h3><a href="#variables-for-basic-diff-in-diff" id="variables-for-basic-diff-in-diff">Variables for basic Diff-in-Diff</a></h3>
+<p>Create an &ldquo;after&rdquo; dummy based on the &ldquo;date&rdquo; variable that is 1 for &ldquo;date&rdquo; &gt;= the code for January 2000, and 0 for dates before the code for January 2000.</p>
+<pre><code>.         ***Create dummy equal to 1 for observations (house sales) occurring post-shock
+.         cap drop after_dum
+
+.         generate after_dum=.
+(10,204 missing values generated)
+
+.         replace  after_dum=1 if year&gt;=2000 &amp; month&gt;=1
+(3,081 real changes made)
+
+.         replace  after_dum=0 if year&lt; 2000
+(7,123 real changes made)
+
+.         
+.         ***Check var creation. 
+.         qui tab date after_dum   if year==2000
+
+.         qui tab date after_dum   if year==1999
+
+</code></pre>
+<p>Create an interaction term that is 1 for observations in Churchill county in the &ldquo;after&rdquo; period and zero otherwise.</p>
+<pre><code>.         
+.         ***I don't know why I made the creation of this var so complicated, but here we are. Should hav
+&gt; e just used the cc dummy (smh).
+.         cap drop cch_after
+
+.         generate cch_after=0
+
+. 
+.         forvalues i=2000(1)2002 {
+  2.                 forvalues x=1/2 {
+  3.                         replace cch_after=1 if cch`i'`x'==1 &amp; after_dum==1
+  4.                 } // closes forvalues x 
+  5.         } // closes forvalues i         
+(146 real changes made)
+(137 real changes made)
+(135 real changes made)
+(131 real changes made)
+(142 real changes made)
+(105 real changes made)
+
+.         
+.         ***Check var creation. 
+.         tab cch20011 after_dum, mi
+
+           |       after_dum
+  cch20011 |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     7,123      2,946 |    10,069 
+         1 |         0        135 |       135 
+-----------+----------------------+----------
+     Total |     7,123      3,081 |    10,204 
+
+.         tab cch20012 after_dum, mi
+
+           |       after_dum
+  cch20012 |         0          1 |     Total
+-----------+----------------------+----------
+         0 |     7,123      2,950 |    10,073 
+         1 |         0        131 |       131 
+-----------+----------------------+----------
+     Total |     7,123      3,081 |    10,204 
+
+.         tab cch_after if year==2001
+
+  cch_after |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |        938       77.91       77.91
+          1 |        266       22.09      100.00
+------------+-----------------------------------
+      Total |      1,204      100.00
+
+. 
+</code></pre>
+<p>Create the linear spline as described in the paper. Note that it is always zero for Lyon county observations. (described on p. 1695)</p>
+<pre><code>.         ***&quot;The third measure is a linear spline that is zero through 1999, rises by 1/24 a month durin
+&gt; g 2000 and 2001, and then takes the value of one.&quot;
+. 
+.         cap drop lin_spl
+
+.         generate lin_spl=.
+(10,204 missing values generated)
+
+.         replace  lin_spl=0 if year&lt;2000
+(7,123 real changes made)
+
+.         replace  lin_spl=1 if year&gt;2001
+(948 real changes made)
+
+.         
+.         loc counter = .04166667 // = 1/24
+
+.         forvalues i=1/12 {
+  2.                 qui replace lin_spl = `counter' if year==2000 &amp; month==`i'
+  3.                 loc counter = `counter'+.04166667
+  4.         } // closes forvalues 
+
+. 
+.         forvalues i=1/12 {
+  2.                 qui replace lin_spl = `counter' if year==2001 &amp; month==`i'
+  3.                 loc counter = `counter'+.04166667
+  4.         } // closes forvalues
+
+. 
+.         replace lin_spl=0 if cc==0 // Note that it is always zero for Lyon county observations.
+(2,285 real changes made)
+
+. 
+.         ***Graph to check that lin_spl correctly made. 
+.         sort date 
+
+.         graph twoway connect lin_spl date if cc==1
+
+. 
+.         qui tab year lin_spl , mi // equals 1 in Dec. of 2001.
+
+. 
+</code></pre>
+<h2><a href="#preliminary-analysis" id="preliminary-analysis">Preliminary Analysis</a></h2>
+<p>Using the &ldquo;tabstat&rdquo; command, approximate the first 5 lines of Table 1. Note that this table is calculated using only observations prior to January, 1999.</p>
+<pre><code>. preserve
+
+.         keep if year &lt; 1999 // keep obs prior to Jan 1999
+(4,026 observations deleted)
+
+.         keep if origclass &gt;= 1 // table in paper notes that range of this var is 1-5
+(333 observations deleted)
+
+. 
+.         qui bysort cc: tab year // check to make sure N matches table; cc is dummy for churchill county
+&gt;  (=1) or lyons county (=0)
+
+.         bysort cc: tabstat realsales acres sqft age origclass // realsales used in paper's table instea
+&gt; d of sales var
+
+---------------------------------------------------------------------------------------------------------
+-&gt; cc = 0
+
+   stats |  realsa~s     acres      sqft       age  origcl~s
+---------+--------------------------------------------------
+    mean |  119500.1  1.151789  1478.285  10.83299  2.317283
+------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------------
+-&gt; cc = 1
+
+   stats |  realsa~s     acres      sqft       age  origcl~s
+---------+--------------------------------------------------
+    mean |  117150.2  1.399846  1502.211   16.2907  1.811462
+------------------------------------------------------------
+
+. 
+. restore
+
+</code></pre>
+<p>Run 5 regressions or t-tests to test the 5 null separate null hypotheses that the means of these variables are equal for Lyon and Churchill county in the population.</p>
+<pre><code>. preserve
+
+.         keep if year &lt; 1999 // keep obs prior to Jan 1999
+(4,026 observations deleted)
+
+.         keep if origclass &gt;= 1 // table in paper notes that range of this var is 1-5
+(333 observations deleted)
+
+.         
+.         loc i = 1
+
+.         foreach var in realsales acres sqft age origclass {
+  2.                 qui reg `var' cc, rob
+  3.                 est sto r`i'
+  4.                 loc i = `i'+1 
+  5.         } // closes foreach var loop 
+
+. 
+.         estout r1 r2 r3 r4 r5, cells(b(star fmt(2)) se(par fmt(3)))
+
+--------------------------------------------------------------------------------------------
+                       r1              r2              r3              r4              r5   
+                     b/se            b/se            b/se            b/se            b/se   
+--------------------------------------------------------------------------------------------
+cc               -2349.88            0.25           23.93*           5.46***        -0.51***
+               (1429.043)         (0.135)        (11.954)         (0.491)         (0.013)   
+_cons           119500.09***         1.15***      1478.28***        10.83***         2.32***
+                (937.773)         (0.108)         (7.476)         (0.263)         (0.009)   
+--------------------------------------------------------------------------------------------
+
+. 
+. restore 
+
+</code></pre>
+<p><strong>Can you reject any of these null hypotheses? Why was this analysis useful before running any analysis based on the natural experiment?</strong></p>
+<p>Yes, we reject the null hypotheses that the means of the building age and condition (class) are equal for Lyon and Churchill county in the population. Comparing the means across the treated and comparison groups helps us understand whether covariates are balanced across the two groups before the treatment period. We would want to see that the treated and comparison groups are similar across a set of chosen covariates before the treatment period.</p>
+<p>Now run difference-in-difference regressions on the entire sample using each of the four &ldquo;control&rdquo; variables (i.e. not for price).</p>
+<pre><code>.         foreach var in realsales acres sqft age origclass {
+  2.                 reg `var' cc##after_dum, rob noheader
+  3.         } // closes foreach var loop 
+------------------------------------------------------------------------------
+             |               Robust
+   realsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        1.cc |  -5170.277   1298.705    -3.98   0.000    -7715.994    -2624.56
+ 1.after_dum |   2049.145   1300.466     1.58   0.115    -500.0236    4598.314
+             |
+cc#after_dum |
+        1 1  |  -6638.507   2222.498    -2.99   0.003    -10995.04   -2281.974
+             |
+       _cons |   121686.9   852.9026   142.67   0.000       120015    123358.7
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+             |               Robust
+       acres |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        1.cc |   .0941872   .1747014     0.54   0.590    -.2482618    .4366363
+ 1.after_dum |  -.5231001   .1678176    -3.12   0.002    -.8520555   -.1941446
+             |
+cc#after_dum |
+        1 1  |   .7998835   .2678004     2.99   0.003     .2749422    1.324825
+             |
+       _cons |   1.304645   .1590385     8.20   0.000     .9928983    1.616392
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+             |               Robust
+        sqft |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        1.cc |   13.91158   10.94242     1.27   0.204    -7.537709    35.36086
+ 1.after_dum |   49.29179   10.62237     4.64   0.000     28.46986    70.11373
+             |
+cc#after_dum |
+        1 1  |   54.19557   22.41247     2.42   0.016     10.26273    98.12842
+             |
+       _cons |   1486.253   6.570138   226.21   0.000     1473.374    1499.132
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+             |               Robust
+         age |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        1.cc |   6.264934   .4556119    13.75   0.000     5.371845    7.158022
+ 1.after_dum |  -2.459728   .3808693    -6.46   0.000    -3.206307   -1.713149
+             |
+cc#after_dum |
+        1 1  |   5.121754   .9379647     5.46   0.000     3.283159    6.960349
+             |
+       _cons |   10.51399   .2352913    44.69   0.000     10.05278    10.97521
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+             |               Robust
+   origclass |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        1.cc |  -.4299213   .0158706   -27.09   0.000    -.4610308   -.3988118
+ 1.after_dum |    .240417    .016531    14.54   0.000      .208013    .2728209
+             |
+cc#after_dum |
+        1 1  |   .0770346   .0318137     2.42   0.015     .0146734    .1393958
+             |
+       _cons |     2.1935   .0114541   191.50   0.000     2.171048    2.215952
+------------------------------------------------------------------------------
+
+</code></pre>
+<p><strong>What do you see in these regressions? Do the results support the equal trends assumption without conditioning on any controls? Why or why not?</strong> From this set of regression outputs, we see that the coefficients on each of the interaction terms is statistically significant, suggesting that we can reject the null hypotheses that there is no difference in each of the home characteristics by treatment group across the time period. Because of this we can assume that different types of houses are being sold in the pre- and post-periods in the two counties. Since we might think that characteristics of homes would be associated with both the price the house sold for <em>and</em> the treatment-X-time groups we would want to include each of these covariates in a set of controls for subsequent analyses.</p>
+<h2><a href="#main-analysis" id="main-analysis">Main Analysis</a></h2>
+<h3><a href="#table-2-results-extended" id="table-2-results-extended">Table 2 Results Extended</a></h3>
+<p>Run a regression to replicate the results of Table 2 using the variables that you created earlier.</p>
+<pre><code>.         reg logrealsales cc after_dum cch_after, robust 
+
+Linear regression                               Number of obs     =     10,204
+                                                F(3, 10200)       =      28.45
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0077
+                                                Root MSE          =     .39187
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |  -.0399441   .0098521    -4.05   0.000    -.0592561   -.0206321
+   after_dum |   .0394579    .009415     4.19   0.000     .0210027     .057913
+   cch_after |  -.0773647   .0188712    -4.10   0.000    -.1143559   -.0403735
+       _cons |    11.6274   .0061293  1897.01   0.000     11.61538    11.63941
+------------------------------------------------------------------------------
+
+</code></pre>
+<p><strong>Carefully interpret each coefficient. Which coefficients are statistically significant from zero?</strong> The dummy indicating treatment (cc=1) has a coefficient of about -0.0399 that is statistically significant at p &lt; 0.001. This suggests that a home sold in Churchill county sells for about 4% less than a home sold in Lyons county holding the time period constant, and that this relationship is not due to chance.</p>
+<p>The dummy indicating the post-period (after_dum=1) has a coefficient of about 0.0395 that is statistically significant at p &lt; 0.001. We could say that a house sold in January of 2000 or later sold for about 4% more than a home sold before this date in the sample holding county constant.</p>
+<p>The interaction between the treatment- and post-dummies has a coefficient of about -0.077 that is statistically significant at p &lt; 0.001. We can interpret the coefficient as the treatment effect of experiencing the cancer cluster. Specifically, we would say that homes sold in Churchill county after the cancer cluster appeared were sold for about 8% less than what we would have expected in the absence of a cancer cluster in this county over this time period.</p>
+<p>The constant has a coefficient of about 11.63 that is significant at p &lt; 0.001. We would interpret this term as the expected logged value for homes in Lyons county (cc=0) sold before 2000 (after_dum==0).</p>
+<p>Run a regression like the one above, but replace the &ldquo;after&rdquo; dummy with dummies for each year. Note that this will require creating 13 dummy variables and omitting one.</p>
+<pre><code>.         ***Create dummies for each year. 
+.         cap drop year_dum*
+
+.         tab year, gen(year_dum)
+
+   Calendar |
+       year |      Freq.     Percent        Cum.
+------------+-----------------------------------
+       1990 |        625        6.13        6.13
+       1991 |        494        4.84       10.97
+       1992 |        553        5.42       16.39
+       1993 |        655        6.42       22.80
+       1994 |        737        7.22       30.03
+       1995 |        690        6.76       36.79
+       1996 |        807        7.91       44.70
+       1997 |        748        7.33       52.03
+       1998 |        869        8.52       60.54
+       1999 |        945        9.26       69.81
+       2000 |        929        9.10       78.91
+       2001 |      1,204       11.80       90.71
+       2002 |        948        9.29      100.00
+------------+-----------------------------------
+      Total |     10,204      100.00
+
+. 
+.         ***Run reg with year_dum set instead of &quot;after&quot; dummy. Omit the first year.
+.         glob yearset &quot;&quot;
+
+.         forvalues i=2/13 {
+  2.                 glob yearset &quot;${yearset} year_dum`i'&quot;  
+  3.         } // closes forvalues loop 
+
+. 
+.         reg logrealsales cc cch_after $yearset , robust 
+
+Linear regression                               Number of obs     =     10,204
+                                                F(14, 10189)      =      18.03
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0249
+                                                Root MSE          =     .38868
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |  -.0322016   .0098382    -3.27   0.001    -.0514864   -.0129168
+   cch_after |  -.0894972   .0189166    -4.73   0.000    -.1265775   -.0524168
+   year_dum2 |  -.0465447   .0276732    -1.68   0.093    -.1007896    .0077002
+   year_dum3 |  -.0109934   .0246469    -0.45   0.656    -.0593063    .0373195
+   year_dum4 |   .0416282   .0244229     1.70   0.088    -.0062454    .0895018
+   year_dum5 |   .0603939   .0236448     2.55   0.011     .0140453    .1067424
+   year_dum6 |   .0970803   .0240548     4.04   0.000     .0499281    .1442324
+   year_dum7 |   .0861183    .023009     3.74   0.000     .0410162    .1312205
+   year_dum8 |   .0710953   .0229843     3.09   0.002     .0260415     .116149
+   year_dum9 |   .1324716   .0221761     5.97   0.000     .0890021    .1759411
+  year_dum10 |   .1563439   .0215676     7.25   0.000     .1140672    .1986206
+  year_dum11 |   .1522383   .0223682     6.81   0.000     .1083922    .1960843
+  year_dum12 |   .0923776   .0213088     4.34   0.000     .0506081    .1341471
+  year_dum13 |   .1012625   .0225972     4.48   0.000     .0569675    .1455575
+       _cons |   11.55483   .0186947   618.08   0.000     11.51818    11.59147
+------------------------------------------------------------------------------
+
+. 
+</code></pre>
+<p><strong>Explain how this specification differs from the last regression you ran in the previous section. In particular, what assumption have you relaxed when you added the multiple time dummies.</strong><br />
+This specification differs in that we have eliminated the post-dummy and replaced it with the set of years that <em>includes</em> all the years in the sample that make up the pre- and post-shock periods.</p>
+<p>The assumption that we relax when we add the multiple time dummies is that there is a constant level change that occurs at the same time as the treatment, and yearly shocks are constant across the groups. Thus, we allow for a more flexible slope in the pre- and post-shock periods by treatment group. (Is this called the &ldquo;continuity&rdquo; assumption?)</p>
+<p>Now include the after dummy along with the year dummies.</p>
+<pre><code>.         reg logrealsales cc after_dum cch_after $yearset, robust 
+note: year_dum11 omitted because of collinearity
+
+Linear regression                               Number of obs     =     10,204
+                                                F(14, 10189)      =      18.03
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0249
+                                                Root MSE          =     .38868
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |  -.0322016   .0098382    -3.27   0.001    -.0514864   -.0129168
+   after_dum |   .1522383   .0223682     6.81   0.000     .1083922    .1960843
+   cch_after |  -.0894972   .0189166    -4.73   0.000    -.1265775   -.0524168
+   year_dum2 |  -.0465447   .0276732    -1.68   0.093    -.1007896    .0077002
+   year_dum3 |  -.0109934   .0246469    -0.45   0.656    -.0593063    .0373195
+   year_dum4 |   .0416282   .0244229     1.70   0.088    -.0062454    .0895018
+   year_dum5 |   .0603939   .0236448     2.55   0.011     .0140453    .1067424
+   year_dum6 |   .0970803   .0240548     4.04   0.000     .0499281    .1442324
+   year_dum7 |   .0861183    .023009     3.74   0.000     .0410162    .1312205
+   year_dum8 |   .0710953   .0229843     3.09   0.002     .0260415     .116149
+   year_dum9 |   .1324716   .0221761     5.97   0.000     .0890021    .1759411
+  year_dum10 |   .1563439   .0215676     7.25   0.000     .1140672    .1986206
+  year_dum11 |          0  (omitted)
+  year_dum12 |  -.0598607   .0154661    -3.87   0.000    -.0901772   -.0295442
+  year_dum13 |  -.0509757   .0168188    -3.03   0.002     -.083944   -.0180075
+       _cons |   11.55483   .0186947   618.08   0.000     11.51818    11.59147
+------------------------------------------------------------------------------
+
+.         di in red _b[cch_after]
+-.08949719
+
+. 
+</code></pre>
+<p><strong>What happens? Why?</strong> We end up with another omitted year dummy in the post period due to collinearity because the entire set of year dummies includes all of the years in the post-period; therefore, we are including the same information in the regression twice (the &ldquo;after dummy&rdquo; perfectly predicts the set of year dummies that represent the post-shock period).</p>
+<p>Return to the regression with the time dummies and no after dummy. Run it again, but replace the interaction term with the &ldquo;spline&rdquo; term.</p>
+<pre><code>.         qui reg logrealsales cc lin_spl $yearset , robust  // output not shown
+
+.         di in red _b[lin_spl]
+-.10548353
+
+</code></pre>
+<p><strong>How do you interpret the coefficient on &ldquo;spline&rdquo; in the regression?</strong> The coefficient on &ldquo;spline&rdquo; is about -0.11 with a standard error of about 0.02. We would say that houses sold in Churchill county after 2002 sold for about 11% less than houses sold in Lyons before the year 2000. Since this realtionship is significant at p &lt; 0.001, we can reject the null that these results are due to chance.</p>
+<p><strong>Bonus Question: Suppose that the &ldquo;spline&rdquo; variable more accurately captures the time pattern of the treatment than the &ldquo;after&rdquo; dummy. Would this explain the difference in the coefficient on the interaction dummy and the coefficient on the &ldquo;spline&rdquo; term between the two regressions? Why or why not?</strong> The coefficient on the &ldquo;spline&rdquo; term is slightly larger in magnitude than the coefficient on the interaction dummy (-0.11 and -0.09, respectively). Yes, if we assume that the &ldquo;shock&rdquo; was not instantaneous, but instead occurred over a period of time (2000-2002), including some of the &ldquo;shock years&rdquo; in the post-period will bias the estimated post-shock effect downward. Weighting these &ldquo;shock years&rdquo; to be less than 1 will decrease the downward bias on the spline coefficient.</p>
+<h3><a href="#table-3-results-extended" id="table-3-results-extended">Table 3 Results Extended</a></h3>
+<p>Now create 12 month dummies, one for each month of the year. Add all but one dummy into the regression you just ran, along with the rest of the controls listed in column 2, with the exception of the class dummies.</p>
+<pre><code>.         ***Create the set of month dummies
+.         cap drop mnth_dum*
+
+.         tab month, gen(mnth_dum)
+
+   Calendar |
+      month |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        699        6.85        6.85
+          2 |        700        6.86       13.71
+          3 |        851        8.34       22.05
+          4 |        859        8.42       30.47
+          5 |        953        9.34       39.81
+          6 |      1,057       10.36       50.17
+          7 |        969        9.50       59.66
+          8 |      1,050       10.29       69.95
+          9 |        821        8.05       78.00
+         10 |        777        7.61       85.61
+         11 |        779        7.63       93.25
+         12 |        689        6.75      100.00
+------------+-----------------------------------
+      Total |     10,204      100.00
+
+. 
+.         ***Capture set of month dummies in glob to use in regression below leaving out the first month 
+&gt; as the omitted category
+.         glob monthset &quot;&quot;
+
+.         forvalues i=2/12 {
+  2.                 glob monthset &quot;${monthset} mnth_dum`i'&quot; // leaving out jan. as omitted. 
+  3.         } // closes forvalues loop 
+
+. 
+.         ***Create age squared var
+.         cap drop age_sq
+
+.         generate age_sq=(age)^2
+
+. 
+.         ***Create acres squared var
+.         cap drop acres_sq
+
+.         generate acres_sq=(acres)^2
+
+. 
+.         ***Run regression using spline and covariates + month fe + year fe
+.         reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $yearset $monthset, robust 
+
+Linear regression                               Number of obs     =     10,204
+                                                F(30, 10173)      =     219.21
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.6026
+                                                Root MSE          =     .24831
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |  -.0058662   .0063813    -0.92   0.358    -.0183749    .0066425
+     lin_spl |  -.1046172   .0144829    -7.22   0.000    -.1330066   -.0762279
+       acres |   .0114125   .0017149     6.65   0.000     .0080509     .014774
+    acres_sq |  -.0000188   3.34e-06    -5.65   0.000    -.0000254   -.0000123
+        sqft |    .000541   9.39e-06    57.64   0.000     .0005226    .0005594
+         age |  -.0086461   .0004763   -18.15   0.000    -.0095798   -.0077124
+      age_sq |   .0000307   8.29e-06     3.71   0.000     .0000145     .000047
+   year_dum2 |  -.0240316   .0190383    -1.26   0.207    -.0613504    .0132873
+   year_dum3 |  -.0197534   .0160896    -1.23   0.220    -.0512921    .0117853
+   year_dum4 |   .0081317   .0164063     0.50   0.620     -.024028    .0402914
+   year_dum5 |   .0353106   .0164453     2.15   0.032     .0030746    .0675466
+   year_dum6 |   .0395331    .016377     2.41   0.016     .0074309    .0716352
+   year_dum7 |    .031906   .0156451     2.04   0.041     .0012385    .0625735
+   year_dum8 |   .0351573   .0155988     2.25   0.024     .0045806     .065734
+   year_dum9 |   .0689948   .0159146     4.34   0.000     .0377991    .1001906
+  year_dum10 |   .0835451   .0150499     5.55   0.000     .0540443    .1130459
+  year_dum11 |   .0555228   .0149161     3.72   0.000     .0262843    .0847612
+  year_dum12 |   .0222076   .0142792     1.56   0.120    -.0057823    .0501976
+  year_dum13 |    .008551    .015382     0.56   0.578    -.0216007    .0387028
+   mnth_dum2 |   .0042253   .0129563     0.33   0.744    -.0211716    .0296223
+   mnth_dum3 |  -.0053207   .0123214    -0.43   0.666    -.0294731    .0188317
+   mnth_dum4 |   .0013532   .0123181     0.11   0.913    -.0227926    .0254991
+   mnth_dum5 |   .0050293   .0126986     0.40   0.692    -.0198625    .0299211
+   mnth_dum6 |   .0297929   .0118337     2.52   0.012     .0065965    .0529893
+   mnth_dum7 |  -.0016279    .011694    -0.14   0.889    -.0245504    .0212946
+   mnth_dum8 |  -.0032781   .0119761    -0.27   0.784    -.0267536    .0201973
+   mnth_dum9 |   .0067689    .012497     0.54   0.588    -.0177277    .0312655
+  mnth_dum10 |  -.0113317   .0128389    -0.88   0.377    -.0364985    .0138351
+  mnth_dum11 |    .009799   .0126182     0.78   0.437    -.0149353    .0345332
+  mnth_dum12 |  -.0054628   .0131762    -0.41   0.678    -.0312907    .0203651
+       _cons |   10.85538   .0201556   538.58   0.000     10.81588    10.89489
+------------------------------------------------------------------------------
+
+.         di in red _b[lin_spl]
+-.10461723
+
+. 
+</code></pre>
+<p><strong>Why would you want to include the month dummies in this regression?</strong> We might want to control for the time of year a house is sold knowing that home prices fluctuate throughout the year because the supply of houses changes. For example, home prices are typically highest in the summer as this season is the busiest moving time of the year and people buy more aggressively than they do in the winter (i.e. less supply and more demand lead to a raise in market prices). We see that when we control for month, the coefficient on the spline variable is slightly larger in magnitude than in the specification that does not control for month.</p>
+<p><strong>Does the coefficient on the linear spline change much? What does this suggest to you about the presence or absence of OVB when you left those variables (including the month dummies) out of the regression.</strong><br />
+No, it changes by about -0.1% from the first specification to the more saturated specifications. This suggests that leaving out month dummies or the set of covariates only slightly introduces OBV into the estimate.</p>
+<p>Run the previous regression, but add &ldquo;origclass&rdquo; as a continuous covariate.</p>
+<pre><code>.                 qui reg logrealsales cc lin_spl acres acres_sq sqft age age_sq origclass $yearset $mont
+&gt; hset, robust  // output not shown
+
+.                 di in red _b[lin_spl]
+-.119925
+
+</code></pre>
+<p><strong>Does the coefficient on the linear spline change? If so, in what direction? What does this change tell you about the type of houses that were more likely to sell in Churchill county after the cancer cluster was discovered.</strong><br />
+Yes, the coefficient on the linear spline is now about -0.12, a larger (more negative) magnitude than what was previously estimated. This change indicates that houses in better condition were more likely to be sold in Churchill county after the cancer cluster was discovered and controlling for the condition of the house results in a slightly larger, negative treatment effect.</p>
+<p>Finally, replicate the specification in column 2 as closely as possible. For the class dummies, you may use the dummies that already exist (class05-class45). Remember to omit one dummy variable from each set.</p>
+<pre><code>.         ***Check out class dummies that came in data
+.         su class*
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+     class05 |     10,204           0           0          0          0
+     class10 |     10,204    .0758526    .2647751          0          1
+     class15 |     10,204    .0380243    .1912643          0          1
+     class20 |     10,204    .4243434    .4942672          0          1
+     class25 |     10,204    .2658761    .4418203          0          1
+-------------+---------------------------------------------------------
+     class30 |     10,204    .1344571    .3411595          0          1
+     class35 |     10,204    .0110741    .1046543          0          1
+     class40 |     10,204      .00539    .0732224          0          1
+     class45 |     10,204     .002352    .0484429          0          1
+
+. 
+.         ***The dummy class05 is not made correctly (mean=0). Will remake here and then include it as th
+&gt; e omitted category
+.         tab origclass, mi
+
+     Class, |
+ continuous |
+    measure |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |        431        4.22        4.22
+        .02 |          1        0.01        4.23
+         .1 |          1        0.01        4.24
+         .2 |          2        0.02        4.26
+          1 |        774        7.59       11.85
+        1.5 |        388        3.80       15.65
+          2 |      4,330       42.43       58.09
+        2.5 |      2,713       26.59       84.67
+          3 |      1,372       13.45       98.12
+        3.5 |        113        1.11       99.23
+          4 |         55        0.54       99.76
+        4.5 |         24        0.24      100.00
+------------+-----------------------------------
+      Total |     10,204      100.00
+
+.         cap drop classtotal 
+
+.         egen     classtotal = rowtotal(class*)
+
+.         tab classtotal class05, mi
+
+           |  class05
+classtotal |         0 |     Total
+-----------+-----------+----------
+         0 |       435 |       435 
+         1 |     9,769 |     9,769 
+-----------+-----------+----------
+     Total |    10,204 |    10,204 
+
+.         // the observations that &gt; 1 in the &quot;origclass&quot; variable = 435. This is the same value that we 
+&gt; should observe in the class05 dummy variable as indicated in the crosstab with classtotal. 
+.         replace class05=1 if origclass &lt; 1 // should be 435 changes. 
+(435 real changes made)
+
+.         
+.         ***Create global to store set of class dummies used in regression below. 
+.         glob classset &quot;&quot;
+
+.         forvalues i=10(5)45 {
+  2.                 glob classset &quot;${classset} class`i'&quot;
+  3.         }       // closes forvalues loop 
+
+. 
+.         ***Run regression
+.         reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $yearset $monthset $classset, robust
+&gt;  // output not shown
+
+Linear regression                               Number of obs     =     10,204
+                                                F(38, 10165)      =     286.29
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.6334
+                                                Root MSE          =     .23859
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |   .0678502   .0075055     9.04   0.000     .0531379    .0825624
+     lin_spl |  -.1549576   .0143373   -10.81   0.000    -.1830616   -.1268536
+       acres |   .0121781   .0017021     7.15   0.000     .0088416    .0155146
+    acres_sq |  -.0000201   3.32e-06    -6.06   0.000    -.0000266   -.0000136
+        sqft |   .0004435   .0000115    38.71   0.000     .0004211     .000466
+         age |  -.0061255   .0004832   -12.68   0.000    -.0070727   -.0051784
+      age_sq |    .000012   8.35e-06     1.43   0.152    -4.41e-06    .0000283
+   year_dum2 |  -.0318007   .0181107    -1.76   0.079    -.0673014    .0036999
+   year_dum3 |  -.0310619   .0151634    -2.05   0.041    -.0607851   -.0013387
+   year_dum4 |  -.0095257   .0156259    -0.61   0.542    -.0401555    .0211041
+   year_dum5 |   .0203161    .015684     1.30   0.195    -.0104277    .0510599
+   year_dum6 |   .0282743   .0156441     1.81   0.071    -.0023913    .0589398
+   year_dum7 |   .0227896   .0150035     1.52   0.129    -.0066202    .0521993
+   year_dum8 |   .0298167   .0150725     1.98   0.048     .0002717    .0593618
+   year_dum9 |   .0538096   .0153214     3.51   0.000     .0237767    .0838425
+  year_dum10 |   .0567125   .0145153     3.91   0.000     .0282597    .0851652
+  year_dum11 |   .0334984   .0142427     2.35   0.019     .0055799    .0614169
+  year_dum12 |  -.0133743   .0135979    -0.98   0.325    -.0400288    .0132802
+  year_dum13 |  -.0287243   .0146374    -1.96   0.050    -.0574164   -.0000322
+   mnth_dum2 |   .0032899   .0122254     0.27   0.788    -.0206744    .0272542
+   mnth_dum3 |  -.0007224   .0118475    -0.06   0.951    -.0239459    .0225011
+   mnth_dum4 |   .0051977   .0117577     0.44   0.658    -.0178498    .0282452
+   mnth_dum5 |   .0087841   .0121795     0.72   0.471    -.0150902    .0326583
+   mnth_dum6 |   .0318869   .0113625     2.81   0.005     .0096141    .0541597
+   mnth_dum7 |   .0020332   .0111309     0.18   0.855    -.0197855    .0238519
+   mnth_dum8 |  -.0016692   .0114375    -0.15   0.884     -.024089    .0207507
+   mnth_dum9 |   .0077429   .0119908     0.65   0.518    -.0157614    .0312473
+  mnth_dum10 |  -.0111104   .0122611    -0.91   0.365    -.0351445    .0129238
+  mnth_dum11 |   .0116595   .0122449     0.95   0.341     -.012343     .035662
+  mnth_dum12 |  -.0081662   .0127107    -0.64   0.521    -.0330817    .0167493
+     class10 |  -.1270714   .0258827    -4.91   0.000    -.1778067   -.0763361
+     class15 |  -.1410135   .0276984    -5.09   0.000    -.1953078   -.0867193
+     class20 |  -.0196433   .0178275    -1.10   0.271    -.0545888    .0153022
+     class25 |   .0746327   .0173957     4.29   0.000     .0405336    .1087318
+     class30 |   .1917925   .0181545    10.56   0.000      .156206    .2273789
+     class35 |   .2593613   .0271065     9.57   0.000     .2062272    .3124953
+     class40 |   .3599608   .0415143     8.67   0.000     .2785846    .4413371
+     class45 |   .4800475   .0515598     9.31   0.000     .3789801     .581115
+       _cons |   10.94438   .0277425   394.50   0.000        10.89    10.99876
+------------------------------------------------------------------------------
+
+.         est sto myc_fe
+
+.         di in red _b[lin_spl]
+-.15495762
+
+. 
+</code></pre>
+<h3><a href="#treating-time-differently" id="treating-time-differently">Treating Time Differently</a></h3>
+<p>Run another specification like the one above (the one that replicates column 2), but omit the month and year dummies. Instead, include a dummy variable for each value of the &ldquo;date&rdquo; variable (except one).</p>
+<pre><code>.         ***Create set of date dummies
+.         cap drop date_dum*
+
+.         qui tab date, gen(date_dum)
+
+. 
+.         ***Create global to capture date dummies used in regression below omitting the first date categ
+&gt; ory
+.         glob datedum &quot;&quot;
+
+.         forvalues i=2(1)153 {
+  2.                 glob datedum &quot;${datedum} date_dum`i'&quot;
+  3.         } // closes forvalues loop 
+
+.         
+.         ***Run regression
+.         reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $datedum $classset, robust   
+
+Linear regression                               Number of obs     =     10,204
+                                                F(167, 10036)     =      77.15
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.6394
+                                                Root MSE          =     .23817
+
+------------------------------------------------------------------------------
+             |               Robust
+logrealsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |   .0681425   .0075489     9.03   0.000     .0533452    .0829399
+     lin_spl |  -.1570744   .0144368   -10.88   0.000    -.1853734   -.1287754
+       acres |   .0122726   .0016897     7.26   0.000     .0089604    .0155847
+    acres_sq |  -.0000204   3.28e-06    -6.22   0.000    -.0000269    -.000014
+        sqft |   .0004429   .0000114    38.81   0.000     .0004206    .0004653
+         age |  -.0061364    .000482   -12.73   0.000    -.0070812   -.0051916
+      age_sq |   .0000115   8.24e-06     1.39   0.164    -4.70e-06    .0000276
+   date_dum2 |   -.030659   .0677243    -0.45   0.651    -.1634122    .1020943
+   date_dum3 |   .0156659   .0499925     0.31   0.754    -.0823294    .1136612
+   date_dum4 |  -.0500631   .0541559    -0.92   0.355    -.1562194    .0560933
+   date_dum5 |   .0129187   .0526627     0.25   0.806    -.0903107    .1161481
+   date_dum6 |  -.0026977   .0456811    -0.06   0.953    -.0922418    .0868464
+   date_dum7 |  -.0950563   .0536659    -1.77   0.077    -.2002521    .0101396
+   date_dum8 |  -.0854321   .0647992    -1.32   0.187    -.2124516    .0415873
+   date_dum9 |   .0615214   .0578859     1.06   0.288    -.0519466    .1749893
+  date_dum10 |   -.077059   .0543041    -1.42   0.156     -.183506     .029388
+  date_dum11 |  -.0487374   .0564927    -0.86   0.388    -.1594744    .0619996
+  date_dum12 |  -.0451597   .0733069    -0.62   0.538    -.1888559    .0985365
+  date_dum13 |  -.0860784   .0605085    -1.42   0.155    -.2046871    .0325304
+  date_dum14 |  -.0312635   .0481176    -0.65   0.516    -.1255836    .0630567
+  date_dum15 |  -.0711379   .0717062    -0.99   0.321    -.2116965    .0694207
+  date_dum16 |  -.0252907   .0692024    -0.37   0.715    -.1609412    .1103598
+  date_dum17 |  -.1372783   .0975907    -1.41   0.160    -.3285757     .054019
+  date_dum18 |  -.0483521   .0502395    -0.96   0.336    -.1468316    .0501273
+  date_dum19 |  -.0194262   .0509342    -0.38   0.703    -.1192675    .0804151
+  date_dum20 |  -.0604821   .0461562    -1.31   0.190    -.1509576    .0299933
+  date_dum21 |    -.06035   .0485161    -1.24   0.214    -.1554513    .0347513
+  date_dum22 |    -.09065   .0597888    -1.52   0.130    -.2078479     .026548
+  date_dum23 |  -.0534406    .058562    -0.91   0.362    -.1682338    .0613526
+  date_dum24 |   -.087436    .053116    -1.65   0.100    -.1915539    .0166819
+  date_dum25 |  -.0402149   .0522352    -0.77   0.441    -.1426064    .0621767
+  date_dum26 |   -.062253   .0515509    -1.21   0.227    -.1633031    .0387972
+  date_dum27 |  -.0990913   .0465563    -2.13   0.033    -.1903509   -.0078317
+  date_dum28 |  -.0607445   .0488983    -1.24   0.214     -.156595    .0351061
+  date_dum29 |   .0042472   .0511984     0.08   0.934    -.0961118    .1046063
+  date_dum30 |   .0024627   .0446552     0.06   0.956    -.0850705    .0899959
+  date_dum31 |  -.0912213   .0482732    -1.89   0.059    -.1858464    .0034038
+  date_dum32 |   -.126183   .0497848    -2.53   0.011    -.2237712   -.0285949
+  date_dum33 |  -.0484666   .0479924    -1.01   0.313    -.1425413     .045608
+  date_dum34 |  -.1367724   .0599911    -2.28   0.023    -.2543669   -.0191779
+  date_dum35 |  -.0235216   .0484343    -0.49   0.627    -.1184625    .0714193
+  date_dum36 |  -.0900778   .0449794    -2.00   0.045    -.1782463   -.0019092
+  date_dum37 |  -.0849766    .052328    -1.62   0.104      -.18755    .0175968
+  date_dum38 |  -.1142685   .0580936    -1.97   0.049    -.2281435   -.0003935
+  date_dum39 |  -.0319318   .0527668    -0.61   0.545    -.1353653    .0715017
+  date_dum40 |  -.0584898   .0563691    -1.04   0.299    -.1689847     .052005
+  date_dum41 |  -.0286535   .0530052    -0.54   0.589    -.1325542    .0752472
+  date_dum42 |  -.0166647    .045456    -0.37   0.714    -.1057677    .0724382
+  date_dum43 |  -.0067205    .047861    -0.14   0.888    -.1005376    .0870966
+  date_dum44 |  -.0368869   .0463184    -0.80   0.426    -.1276802    .0539065
+  date_dum45 |  -.0276226   .0477067    -0.58   0.563    -.1211372     .065892
+  date_dum46 |  -.0492115   .0525333    -0.94   0.349    -.1521873    .0537644
+  date_dum47 |  -.0200018   .0502621    -0.40   0.691    -.1185256    .0785219
+  date_dum48 |  -.0656564   .0532459    -1.23   0.218    -.1700291    .0387163
+  date_dum49 |   -.005561   .0425703    -0.13   0.896    -.0890073    .0778853
+  date_dum50 |  -.0196137   .0488516    -0.40   0.688    -.1153726    .0761453
+  date_dum51 |  -.0145319   .0484232    -0.30   0.764    -.1094511    .0803872
+  date_dum52 |   .0230303   .0465618     0.49   0.621    -.0682402    .1143009
+  date_dum53 |  -.0406956   .0576933    -0.71   0.481     -.153786    .0723948
+  date_dum54 |  -.0060077   .0471951    -0.13   0.899    -.0985196    .0865042
+  date_dum55 |  -.0560743   .0537053    -1.04   0.296    -.1613474    .0491989
+  date_dum56 |   .0233185   .0456148     0.51   0.609    -.0660956    .1127326
+  date_dum57 |   .0498074   .0493786     1.01   0.313    -.0469845    .1465992
+  date_dum58 |  -.0587892   .0618839    -0.95   0.342    -.1800941    .0625157
+  date_dum59 |    -.02619   .0619907    -0.42   0.673    -.1477042    .0953243
+  date_dum60 |  -.0470516   .0578756    -0.81   0.416    -.1604994    .0663961
+  date_dum61 |   .0252051   .0453443     0.56   0.578    -.0636789    .1140891
+  date_dum62 |    .060969   .0535472     1.14   0.255    -.0439942    .1659322
+  date_dum63 |  -.0193347   .0544369    -0.36   0.722     -.126042    .0873726
+  date_dum64 |  -.0291163   .0551582    -0.53   0.598    -.1372373    .0790048
+  date_dum65 |   .0294618   .0588303     0.50   0.617    -.0858574    .1447811
+  date_dum66 |   .0114173   .0459189     0.25   0.804    -.0785928    .1014275
+  date_dum67 |  -.0686566   .0558013    -1.23   0.219    -.1780384    .0407251
+  date_dum68 |  -.0357977   .0449958    -0.80   0.426    -.1239985     .052403
+  date_dum69 |  -.0232591   .0446349    -0.52   0.602    -.1107525    .0642343
+  date_dum70 |   .0091965   .0445041     0.21   0.836    -.0780403    .0964334
+  date_dum71 |   .0143926   .0532194     0.27   0.787     -.089928    .1187133
+  date_dum72 |  -.0100208   .0468361    -0.21   0.831     -.101829    .0817873
+  date_dum73 |  -.0140456   .0598919    -0.23   0.815    -.1314457    .1033544
+  date_dum74 |  -.0392332   .0459419    -0.85   0.393    -.1292887    .0508222
+  date_dum75 |   .0018348    .045531     0.04   0.968     -.087415    .0910847
+  date_dum76 |  -.0220943   .0459712    -0.48   0.631    -.1122071    .0680185
+  date_dum77 |   .0073348   .0464846     0.16   0.875    -.0837843    .0984538
+  date_dum78 |   .0048539   .0449013     0.11   0.914    -.0831617    .0928695
+  date_dum79 |  -.0044761   .0466249    -0.10   0.924    -.0958702    .0869181
+  date_dum80 |  -.0134233   .0461309    -0.29   0.771    -.1038491    .0770025
+  date_dum81 |  -.0236693   .0559269    -0.42   0.672    -.1332972    .0859585
+  date_dum82 |  -.0162171   .0495396    -0.33   0.743    -.1133245    .0808904
+  date_dum83 |    .045415   .0483325     0.94   0.347    -.0493264    .1401564
+  date_dum84 |  -.0490979   .0477268    -1.03   0.304     -.142652    .0444563
+  date_dum85 |   -.009638   .0503472    -0.19   0.848    -.1083287    .0890526
+  date_dum86 |  -.0206383   .0541452    -0.38   0.703    -.1267738    .0854972
+  date_dum87 |   .0147634   .0457425     0.32   0.747     -.074901    .1044278
+  date_dum88 |   .0109271   .0440646     0.25   0.804    -.0754483    .0973026
+  date_dum89 |    .006559   .0488273     0.13   0.893    -.0891523    .1022703
+  date_dum90 |  -.0128909   .0470483    -0.27   0.784     -.105115    .0793333
+  date_dum91 |  -.0291141   .0457409    -0.64   0.524    -.1187754    .0605473
+  date_dum92 |  -.0162615   .0508238    -0.32   0.749    -.1158865    .0833634
+  date_dum93 |  -.0183344   .0502898    -0.36   0.715    -.1169125    .0802437
+  date_dum94 |   .0325082   .0458902     0.71   0.479    -.0574459    .1224623
+  date_dum95 |   .0367778   .0520594     0.71   0.480    -.0652692    .1388247
+  date_dum96 |  -.0371388   .0501861    -0.74   0.459    -.1355135     .061236
+  date_dum97 |  -.0151339   .0473064    -0.32   0.749    -.1078638    .0775961
+  date_dum98 |  -.0091825   .0465799    -0.20   0.844    -.1004885    .0821234
+  date_dum99 |   .0172234    .053028     0.32   0.745    -.0867222     .121169
+ date_dum100 |   .0663531   .0497434     1.33   0.182    -.0311538    .1638601
+ date_dum101 |   .0078351   .0445892     0.18   0.861    -.0795687    .0952389
+ date_dum102 |   .1194009   .0617926     1.93   0.053     -.001725    .2405268
+ date_dum103 |   .0143469    .047547     0.30   0.763    -.0788546    .1075485
+ date_dum104 |   .0055174   .0505851     0.11   0.913    -.0936396    .1046743
+ date_dum105 |  -.0074757    .044049    -0.17   0.865    -.0938207    .0788692
+ date_dum106 |  -.0435431   .0490631    -0.89   0.375    -.1397166    .0526304
+ date_dum107 |   .0035804   .0457299     0.08   0.938    -.0860593    .0932201
+ date_dum108 |   .0403986   .0447381     0.90   0.367    -.0472971    .1280943
+ date_dum109 |  -.0333879   .0464518    -0.72   0.472    -.1244427    .0576669
+ date_dum110 |   .0520317   .0536577     0.97   0.332     -.053148    .1572115
+ date_dum111 |   .0111285    .048032     0.23   0.817    -.0830238    .1052809
+ date_dum112 |   .0144244   .0423827     0.34   0.734    -.0686542    .0975031
+ date_dum113 |   .0327165   .0439189     0.74   0.456    -.0533733    .1188063
+ date_dum114 |    .026231   .0431215     0.61   0.543    -.0582959    .1107579
+ date_dum115 |   .0132382   .0422536     0.31   0.754    -.0695873    .0960638
+ date_dum116 |   .0008087    .046225     0.02   0.986    -.0898015     .091419
+ date_dum117 |   .0563345   .0519717     1.08   0.278    -.0455404    .1582095
+ date_dum118 |   .0734129   .0473436     1.55   0.121      -.01939    .1662158
+ date_dum119 |   .0336835   .0477602     0.71   0.481    -.0599362    .1273031
+ date_dum120 |   .0110484   .0590244     0.19   0.852    -.1046513     .126748
+ date_dum121 |  -.0008861   .0461955    -0.02   0.985    -.0914386    .0896663
+ date_dum122 |   .0010912   .0431336     0.03   0.980    -.0834593    .0856417
+ date_dum123 |  -.0398241   .0534172    -0.75   0.456    -.1445326    .0648843
+ date_dum124 |   .0140652   .0461838     0.30   0.761    -.0764642    .1045946
+ date_dum125 |   -.029942   .0483498    -0.62   0.536    -.1247174    .0648333
+ date_dum126 |   .0629826   .0459795     1.37   0.171    -.0271465    .1531117
+ date_dum127 |   .0378683   .0427938     0.88   0.376    -.0460162    .1217527
+ date_dum128 |   .0172348   .0433213     0.40   0.691    -.0676836    .1021532
+ date_dum129 |  -.0241293   .0484101    -0.50   0.618    -.1190229    .0707643
+ date_dum130 |  -.0263543   .0426218    -0.62   0.536    -.1099016    .0571931
+ date_dum131 |  -.0183792   .0420041    -0.44   0.662    -.1007157    .0639573
+ date_dum132 |   .0131174    .048042     0.27   0.785    -.0810545    .1072892
+ date_dum133 |  -.0609914   .0472386    -1.29   0.197    -.1535885    .0316058
+ date_dum134 |  -.0304447   .0458733    -0.66   0.507    -.1203655    .0594761
+ date_dum135 |  -.0785964   .0428239    -1.84   0.066    -.1625398     .005347
+ date_dum136 |  -.0271414   .0425405    -0.64   0.523    -.1105292    .0562464
+ date_dum137 |  -.0557257   .0433743    -1.28   0.199     -.140748    .0292966
+ date_dum138 |  -.0104925   .0434617    -0.24   0.809    -.0956861    .0747011
+ date_dum139 |   .0034708   .0445151     0.08   0.938    -.0837878    .0907294
+ date_dum140 |  -.0380196   .0431693    -0.88   0.378    -.1226401    .0466009
+ date_dum141 |  -.0847857   .0438469    -1.93   0.053    -.1707344    .0011629
+ date_dum142 |  -.0722877   .0434574    -1.66   0.096    -.1574728    .0128975
+ date_dum143 |  -.0677227   .0426484    -1.59   0.112    -.1513221    .0158767
+ date_dum144 |  -.0502862   .0427792    -1.18   0.240     -.134142    .0335697
+ date_dum145 |  -.0244826   .0479629    -0.51   0.610    -.1184996    .0695344
+ date_dum146 |  -.0741527   .0452992    -1.64   0.102    -.1629482    .0146429
+ date_dum147 |  -.0371754   .0424661    -0.88   0.381    -.1204175    .0460667
+ date_dum148 |  -.1324286   .0466966    -2.84   0.005    -.2239634   -.0408938
+ date_dum149 |  -.0469064   .0417443    -1.12   0.261    -.1287335    .0349207
+ date_dum150 |  -.0517591   .0443604    -1.17   0.243    -.1387144    .0351962
+ date_dum151 |  -.0638401   .0413188    -1.55   0.122    -.1448333    .0171531
+ date_dum152 |  -.0452235    .044381    -1.02   0.308    -.1322192    .0417721
+ date_dum153 |   -.049858    .044298    -1.13   0.260     -.136691    .0369749
+     class10 |  -.1251852   .0262172    -4.77   0.000    -.1765761   -.0737943
+     class15 |  -.1401968   .0277673    -5.05   0.000    -.1946263   -.0857674
+     class20 |  -.0190535   .0180338    -1.06   0.291    -.0544033    .0162962
+     class25 |   .0757251   .0175742     4.31   0.000     .0412762     .110174
+     class30 |   .1918437   .0183687    10.44   0.000     .1558373    .2278501
+     class35 |   .2629052   .0272048     9.66   0.000     .2095783     .316232
+     class40 |   .3619828   .0412383     8.78   0.000     .2811475    .4428181
+     class45 |   .4774736   .0502382     9.50   0.000     .3789966    .5759506
+       _cons |   10.98162   .0472198   232.56   0.000     10.88906    11.07418
+------------------------------------------------------------------------------
+
+.         est sto dc_fe
+
+</code></pre>
+<p><strong>Explain the difference between these two specifications.</strong><br />
+The coefficients on the house characteristics included as covariates are equal across the two specifications. We see that the coefficient on the &ldquo;spline&rdquo; variable has increased in magnitude from -0.155 in the regression with month and year dummies to -0.157 in the regression with the date dummies. Additionally, we see that constant changed slightly from 10.94 to 10.98.</p>
+<p>This might be because the date dummies look within each month/year <em>combination</em> while including the two sets of dummies (month and year) look within each year separately, and then each month, separately, at variation that can be used to estimate the treatment effect.</p>
+<p>Now change the LHS variable to &ldquo;lognomsales&rdquo; - the log of the nominal sales price.</p>
+<pre><code>.         
+.         reg lognomsales cc lin_spl acres acres_sq sqft age age_sq $datedum $classset, robust    
+
+Linear regression                               Number of obs     =     10,204
+                                                F(167, 10036)     =     110.63
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.6824
+                                                Root MSE          =     .23817
+
+------------------------------------------------------------------------------
+             |               Robust
+ lognomsales |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+          cc |   .0681425   .0075489     9.03   0.000     .0533451    .0829399
+     lin_spl |  -.1570744   .0144368   -10.88   0.000    -.1853734   -.1287754
+       acres |   .0122726   .0016897     7.26   0.000     .0089604    .0155847
+    acres_sq |  -.0000204   3.28e-06    -6.22   0.000    -.0000269    -.000014
+        sqft |   .0004429   .0000114    38.81   0.000     .0004206    .0004653
+         age |  -.0061364    .000482   -12.73   0.000    -.0070812   -.0051916
+      age_sq |   .0000115   8.24e-06     1.39   0.164    -4.70e-06    .0000276
+   date_dum2 |   -.030659   .0677243    -0.45   0.651    -.1634122    .1020942
+   date_dum3 |   .0156658   .0499925     0.31   0.754    -.0823295    .1136611
+   date_dum4 |   -.035328   .0541559    -0.65   0.514    -.1414843    .0708284
+   date_dum5 |   .0276538   .0526627     0.53   0.600    -.0755756    .1308832
+   date_dum6 |   .0120375   .0456811     0.26   0.792    -.0775067    .1015816
+   date_dum7 |  -.0545584   .0536659    -1.02   0.309    -.1597542    .0506375
+   date_dum8 |  -.0449343   .0647992    -0.69   0.488    -.1719537    .0820852
+   date_dum9 |   .1020192   .0578859     1.76   0.078    -.0114487    .2154872
+  date_dum10 |  -.0252542   .0543041    -0.47   0.642    -.1317012    .0811928
+  date_dum11 |   .0030674   .0564927     0.05   0.957    -.1076696    .1138044
+  date_dum12 |   .0066452   .0733069     0.09   0.928     -.137051    .1503414
+  date_dum13 |  -.0136814   .0605085    -0.23   0.821    -.1322901    .1049274
+  date_dum14 |   .0411334   .0481176     0.85   0.393    -.0531867    .1354535
+  date_dum15 |   .0012591   .0717062     0.02   0.986    -.1392995    .1418177
+  date_dum16 |   .0559146   .0692024     0.81   0.419    -.0797359    .1915651
+  date_dum17 |  -.0560729   .0975907    -0.57   0.566    -.2473702    .1352245
+  date_dum18 |   .0328532   .0502395     0.65   0.513    -.0656262    .1313327
+  date_dum19 |   .0670917   .0509342     1.32   0.188    -.0327496     .166933
+  date_dum20 |   .0260357   .0461562     0.56   0.573    -.0644397    .1165111
+  date_dum21 |   .0261679   .0485161     0.54   0.590    -.0689333    .1212692
+  date_dum22 |   .0157321   .0597888     0.26   0.792    -.1014659    .1329301
+  date_dum23 |   .0529415    .058562     0.90   0.366    -.0618518    .1677347
+  date_dum24 |   .0189461    .053116     0.36   0.721    -.0851718     .123064
+  date_dum25 |   .0764317   .0522352     1.46   0.143    -.0259598    .1788232
+  date_dum26 |   .0543935   .0515509     1.06   0.291    -.0466567    .1554436
+  date_dum27 |   .0175553   .0465563     0.38   0.706    -.0737043    .1088149
+  date_dum28 |   .0520421   .0488983     1.06   0.287    -.0438085    .1478927
+  date_dum29 |   .1170338   .0511983     2.29   0.022     .0166748    .2173928
+  date_dum30 |   .1152493   .0446552     2.58   0.010     .0277161    .2027825
+  date_dum31 |   .0405865   .0482732     0.84   0.400    -.0540386    .1352116
+  date_dum32 |   .0056248   .0497848     0.11   0.910    -.0919633    .1032129
+  date_dum33 |   .0833412   .0479924     1.74   0.082    -.0107334    .1774159
+  date_dum34 |   .0013794   .0599911     0.02   0.982    -.1162151    .1189738
+  date_dum35 |   .1146302   .0484343     2.37   0.018     .0196893    .2095711
+  date_dum36 |    .048074   .0449794     1.07   0.285    -.0400945    .1362426
+  date_dum37 |      .0507    .052328     0.97   0.333    -.0518734    .1532734
+  date_dum38 |   .0214082   .0580936     0.37   0.712    -.0924669    .1352832
+  date_dum39 |   .1037448   .0527668     1.97   0.049     .0003113    .2071783
+  date_dum40 |     .08596   .0563691     1.52   0.127    -.0245347    .1964548
+  date_dum41 |   .1157964   .0530051     2.18   0.029     .0118957    .2196971
+  date_dum42 |   .1277851    .045456     2.81   0.005     .0386821     .216888
+  date_dum43 |   .1460262    .047861     3.05   0.002     .0522091    .2398433
+  date_dum44 |   .1158599   .0463184     2.50   0.012     .0250665    .2066533
+  date_dum45 |   .1251242   .0477066     2.62   0.009     .0316096    .2186388
+  date_dum46 |    .110891   .0525333     2.11   0.035     .0079152    .2138668
+  date_dum47 |   .1401006   .0502621     2.79   0.005     .0415769    .2386244
+  date_dum48 |   .0944461   .0532459     1.77   0.076    -.0099265    .1988188
+  date_dum49 |   .1543461   .0425703     3.63   0.000     .0708998    .2377924
+  date_dum50 |   .1402934   .0488516     2.87   0.004     .0445345    .2360523
+  date_dum51 |   .1453751   .0484232     3.00   0.003     .0504559    .2402943
+  date_dum52 |    .186748   .0465618     4.01   0.000     .0954774    .2780185
+  date_dum53 |   .1230219   .0576933     2.13   0.033     .0099315    .2361123
+  date_dum54 |   .1577099   .0471951     3.34   0.001     .0651979    .2502218
+  date_dum55 |    .113462   .0537053     2.11   0.035     .0081888    .2187352
+  date_dum56 |   .1928549   .0456148     4.23   0.000     .1034407     .282269
+  date_dum57 |   .2193437   .0493786     4.44   0.000     .1225519    .3161356
+  date_dum58 |   .1069466   .0618839     1.73   0.084    -.0143583    .2282515
+  date_dum59 |   .1395461   .0619907     2.25   0.024     .0180318    .2610603
+  date_dum60 |   .1186843   .0578756     2.05   0.040     .0052365     .232132
+  date_dum61 |   .1961199   .0453443     4.33   0.000     .1072359    .2850039
+  date_dum62 |   .2318839   .0535472     4.33   0.000     .1269207    .3368471
+  date_dum63 |   .1515801   .0544369     2.78   0.005     .0448729    .2582874
+  date_dum64 |   .1632976   .0551582     2.96   0.003     .0551765    .2714186
+  date_dum65 |   .2218758   .0588303     3.77   0.000     .1065565    .3371951
+  date_dum66 |   .2038313   .0459189     4.44   0.000     .1138211    .2938415
+  date_dum67 |   .1378491   .0558013     2.47   0.014     .0284674    .2472308
+  date_dum68 |    .170708   .0449958     3.79   0.000     .0825073    .2589087
+  date_dum69 |   .1832467   .0446349     4.11   0.000     .0957532    .2707401
+  date_dum70 |   .2250395   .0445041     5.06   0.000     .1378026    .3122763
+  date_dum71 |   .2302356   .0532194     4.33   0.000      .125915    .3345562
+  date_dum72 |   .2058221   .0468361     4.39   0.000      .114014    .2976302
+  date_dum73 |   .2144706   .0598919     3.58   0.000     .0970706    .3318707
+  date_dum74 |    .189283   .0459419     4.12   0.000     .0992276    .2793384
+  date_dum75 |   .2303511    .045531     5.06   0.000     .1411012    .3196009
+  date_dum76 |   .1995946   .0459712     4.34   0.000     .1094817    .2897074
+  date_dum77 |   .2290235   .0464846     4.93   0.000     .1379045    .3201426
+  date_dum78 |   .2265427   .0449013     5.05   0.000     .1385271    .3145584
+  date_dum79 |   .2156783   .0466249     4.63   0.000     .1242842    .3070725
+  date_dum80 |    .206731   .0461309     4.48   0.000     .1163052    .2971568
+  date_dum81 |    .196485   .0559269     3.51   0.000     .0868571    .3061128
+  date_dum82 |   .2162439   .0495396     4.37   0.000     .1191365    .3133514
+  date_dum83 |    .277876   .0483325     5.75   0.000     .1831346    .3726174
+  date_dum84 |   .1833632   .0477268     3.84   0.000      .089809    .2769174
+  date_dum85 |   .2291767   .0503472     4.55   0.000      .130486    .3278674
+  date_dum86 |   .2181766   .0541452     4.03   0.000     .1120411    .3243122
+  date_dum87 |   .2535783   .0457425     5.54   0.000     .1639139    .3432427
+  date_dum88 |   .2500299   .0440646     5.67   0.000     .1636545    .3364053
+  date_dum89 |   .2456616   .0488273     5.03   0.000     .1499504    .3413729
+  date_dum90 |   .2262118   .0470483     4.81   0.000     .1339877     .318436
+  date_dum91 |   .2259167   .0457409     4.94   0.000     .1362553     .315578
+  date_dum92 |   .2387692   .0508238     4.70   0.000     .1391442    .3383941
+  date_dum93 |   .2366963   .0502898     4.71   0.000     .1381182    .3352744
+  date_dum94 |   .2918287   .0458902     6.36   0.000     .2018746    .3817828
+  date_dum95 |   .2960982   .0520594     5.69   0.000     .1940513    .3981451
+  date_dum96 |   .2221818   .0501861     4.43   0.000      .123807    .3205566
+  date_dum97 |   .2571266   .0473064     5.44   0.000     .1643967    .3498566
+  date_dum98 |   .2630779   .0465799     5.65   0.000      .171772    .3543838
+  date_dum99 |   .2894839    .053028     5.46   0.000     .1855383    .3934294
+ date_dum100 |   .3408005   .0497434     6.85   0.000     .2432936    .4383075
+ date_dum101 |   .2822824   .0445892     6.33   0.000     .1948787    .3696862
+ date_dum102 |   .3938482   .0617926     6.37   0.000     .2727223     .514974
+ date_dum103 |   .2939398    .047547     6.18   0.000     .2007382    .3871413
+ date_dum104 |   .2851102   .0505851     5.64   0.000     .1859532    .3842671
+ date_dum105 |   .2721171    .044049     6.18   0.000     .1857722     .358462
+ date_dum106 |   .2433823   .0490631     4.96   0.000     .1472088    .3395558
+ date_dum107 |   .2905058   .0457299     6.35   0.000     .2008662    .3801455
+ date_dum108 |   .3273241   .0447381     7.32   0.000     .2396284    .4150198
+ date_dum109 |   .2546829   .0464518     5.48   0.000     .1636281    .3457377
+ date_dum110 |   .3401025   .0536577     6.34   0.000     .2349227    .4452823
+ date_dum111 |   .2991993    .048032     6.23   0.000      .205047    .3933517
+ date_dum112 |   .2987103   .0423827     7.05   0.000     .2156316    .3817889
+ date_dum113 |   .3170023   .0439189     7.22   0.000     .2309125    .4030921
+ date_dum114 |   .3105169   .0431215     7.20   0.000       .22599    .3950438
+ date_dum115 |   .3067058   .0422536     7.26   0.000     .2238802    .3895314
+ date_dum116 |   .2942763    .046225     6.37   0.000      .203666    .3848866
+ date_dum117 |   .3498021   .0519717     6.73   0.000     .2479272     .451677
+ date_dum118 |   .3680768   .0473436     7.77   0.000     .2752739    .4608797
+ date_dum119 |   .3283475   .0477602     6.87   0.000     .2347278    .4219671
+ date_dum120 |   .3057124   .0590244     5.18   0.000     .1900128    .4214121
+ date_dum121 |   .3045882   .0461955     6.59   0.000     .2140358    .3951407
+ date_dum122 |   .3065656   .0431336     7.11   0.000     .2220151    .3911161
+ date_dum123 |   .2656502   .0534172     4.97   0.000     .1609418    .3703587
+ date_dum124 |   .3308873   .0461838     7.16   0.000     .2403578    .4214167
+ date_dum125 |     .28688   .0483498     5.93   0.000     .1921047    .3816554
+ date_dum126 |   .3798046   .0459795     8.26   0.000     .2896755    .4699337
+ date_dum127 |   .3638069   .0427938     8.50   0.000     .2799225    .4476914
+ date_dum128 |   .3431735   .0433213     7.92   0.000     .2582551    .4280919
+ date_dum129 |   .3018093   .0484101     6.23   0.000     .2069157    .3967029
+ date_dum130 |   .3177907   .0426218     7.46   0.000     .2342433     .401338
+ date_dum131 |   .3257657   .0420041     7.76   0.000     .2434292    .4081022
+ date_dum132 |   .3572623    .048042     7.44   0.000     .2630904    .4514341
+ date_dum133 |   .3051978   .0472386     6.46   0.000     .2126006    .3977949
+ date_dum134 |   .3357444   .0458733     7.32   0.000     .2458236    .4256652
+ date_dum135 |   .2875927   .0428239     6.72   0.000     .2036493    .3715361
+ date_dum136 |   .3502662   .0425405     8.23   0.000     .2668783     .433654
+ date_dum137 |   .3216819   .0433743     7.42   0.000     .2366596    .4067042
+ date_dum138 |   .3669151   .0434617     8.44   0.000     .2817215    .4521088
+ date_dum139 |   .3998972   .0445151     8.98   0.000     .3126387    .4871558
+ date_dum140 |   .3584068   .0431693     8.30   0.000     .2737863    .4430273
+ date_dum141 |   .3116407   .0438469     7.11   0.000      .225692    .3975893
+ date_dum142 |   .3387431   .0434574     7.79   0.000      .253558    .4239283
+ date_dum143 |   .3433081   .0426484     8.05   0.000     .2597087    .4269076
+ date_dum144 |   .3607447   .0427792     8.43   0.000     .2768888    .4446005
+ date_dum145 |   .4013732   .0479629     8.37   0.000     .3073562    .4953901
+ date_dum146 |   .3517032   .0452992     7.76   0.000     .2629076    .4404988
+ date_dum147 |   .3886804   .0424661     9.15   0.000     .3054383    .4719225
+ date_dum148 |   .3125288   .0466967     6.69   0.000     .2209941    .4040636
+ date_dum149 |   .3980511   .0417443     9.54   0.000     .3162239    .4798782
+ date_dum150 |   .3931984   .0443604     8.86   0.000     .3062431    .4801537
+ date_dum151 |   .4039102   .0413188     9.78   0.000      .322917    .4849033
+ date_dum152 |   .4225267    .044381     9.52   0.000     .3355311    .5095223
+ date_dum153 |   .4178922    .044298     9.43   0.000     .3310592    .5047251
+     class10 |  -.1251852   .0262172    -4.77   0.000    -.1765761   -.0737943
+     class15 |  -.1401968   .0277673    -5.05   0.000    -.1946263   -.0857674
+     class20 |  -.0190536   .0180338    -1.06   0.291    -.0544033    .0162962
+     class25 |    .075725   .0175742     4.31   0.000     .0412761     .110174
+     class30 |   .1918437   .0183687    10.44   0.000     .1558373      .22785
+     class35 |   .2629051   .0272048     9.66   0.000     .2095783    .3162319
+     class40 |   .3619827   .0412383     8.78   0.000     .2811474     .442818
+     class45 |   .4774737   .0502382     9.50   0.000     .3789967    .5759506
+       _cons |   10.67614   .0472198   226.09   0.000     10.58358     10.7687
+------------------------------------------------------------------------------
+
+.         est sto log_dc_fe
+
+. 
+.         ***Make an estout table so that it easy to compare the last three regs.
+.         estout myc_fe dc_fe log_dc_fe, cells(b(star fmt(3)) se(par fmt(3))) drop(date_dum* class* mnth_
+&gt; dum* year_dum*)
+
+------------------------------------------------------------
+                   myc_fe           dc_fe       log_dc_fe   
+                     b/se            b/se            b/se   
+------------------------------------------------------------
+cc                  0.068***        0.068***        0.068***
+                  (0.008)         (0.008)         (0.008)   
+lin_spl            -0.155***       -0.157***       -0.157***
+                  (0.014)         (0.014)         (0.014)   
+acres               0.012***        0.012***        0.012***
+                  (0.002)         (0.002)         (0.002)   
+acres_sq           -0.000***       -0.000***       -0.000***
+                  (0.000)         (0.000)         (0.000)   
+sqft                0.000***        0.000***        0.000***
+                  (0.000)         (0.000)         (0.000)   
+age                -0.006***       -0.006***       -0.006***
+                  (0.000)         (0.000)         (0.000)   
+age_sq              0.000           0.000           0.000   
+                  (0.000)         (0.000)         (0.000)   
+_cons              10.944***       10.982***       10.676***
+                  (0.028)         (0.047)         (0.047)   
+------------------------------------------------------------
+
+</code></pre>
+<p><strong>Do any of the coefficients change besides the date dummies? Explain why this is the case.</strong></p>
+<p>No, the coefficients on the house characteristics used as covariates are the same between the model where the log of the nominal sales price is the outcome and the model with the log of real sales prices as the outcome. This makes sense because &ldquo;real&rdquo; sales prices would suggest that these values are calculated while controlling for inflation. Thus, we understand that changes in house prices in &ldquo;real terms&rdquo; already excludes the effect of inflation. When we compare this to the &ldquo;nominal price&rdquo;, we see that adding the set of date dummies is ultimately doing the same thing, inflation is being controlled for with the set of date dummies since the deflation process happens twice a year.</p>

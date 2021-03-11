@@ -69,22 +69,22 @@ Date: <<dd_display: c(current_date)>>
 	set obs  100000
 	set seed 123456
 
-	***For each individual, draw two potential outcomes represeting knowledge of micro in treated y_1 and untreated y_0 states of the world.
+	***For each individual, draw two potential outcomes representing knowledge of micro in treated y_1 and untreated y_0 states of the world.
 	cap drop y0 
 	cap drop y1 
 	cap drop effect 
-	generate y0 = rnormal(50, 5)
-	generate y1 = y0 + rnormal(5, 2)
+	generate y0 = rnormal(50, 5) // untreated outcome has mean of 50 with sd of 5
+	generate y1 = y0 + rnormal(5, 2) // treated outcome will be equal to the untreated outcome +/- some amount where the mean of the amount is 5 an the sd=2
 
 	***Create var that is each individual's effect of having to take prelim second time. 
-	generate effect = y1 - y0 
+	generate effect = y1 - y0 // treated outcome - untreated outcome
 <</dd_do>>
 ~~~~
 
 
 ### Selection Bias
 **If you could observe both potential outcomes for each individual, what would you do?**  
-To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We could then find the mean of this variable to identify the average causal effect across the sample (which is what we do when we make the 'effect' variable above.)   
+To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We've done this in the creation of the "effect" variable above. We can then find the mean of this variable to identify the average causal effect across the sample. 
 
 **Does it match what you expected?**
 ~~~~
@@ -93,82 +93,115 @@ To observe the potential outcomes for each individual, we would want to create a
 	di in red `r(mean)'
 <</dd_do>>
 ~~~~
-The mean of the "effect" variable is 5.003. We would expect that this value *would* be close to 5 since the mean of the 'noise' we added to the treated potential outcome is 5.  
+The mean of the "effect" variable is 5.003. We would expect that this value *would* be close to 5 since the mean of the 'noise' we added in the creation of the treated potential outcome equals 5.  
 
 Mimic the random assignment that would occur in an experiment. 
 ~~~~
 <<dd_do>>
 	***Create var that has a 0.5 prob of being 1 and is 0 otherwise
-	cap drop treated yobs
-	generate treated = (runiform() > 0.5)
+	set seed 123456
+	cap drop treated
+	generate treated = runiform() > 0.5
 
 	***Create a var that is the observed potential outcome for each individual based on group assignment. 
-	generate yobs = y0
-	replace yobs = y1 if treated == 1
+	cap drop obs_y
+	generate obs_y = y0
+	replace  obs_y = y1 if treated == 1
 
 	***Run a reg. to get the difference in means of the observed value of y_i between treated/untreated groups.
-	reg yobs treated
-	disp in red _b[treated] //coef. of interest in on treated
+	reg obs_y treated
+	disp in red _b[treated] //coef. of interest is on treated
 <</dd_do>>
 ~~~~
-**Does this regression coeﬃcient match the true ATE?**   
-The coefficient on the treated dummy is 4.9998, with a standard error of 0.032. We would conclude that this estimate captures the true ATE within its confidence interval.   
 
-Now, mimic the assignemnt that would occur if assignment to the treatment were based on an exam. 
+**Does this regression coefficient match the true ATE?**   
+The coefficient on the treated dummy is 4.9498, with a standard error of 0.033. We would conclude that this estimate captures the true ATE within its estimated confidence interval.   
+
+Now, mimic the assignment that would occur if assignment to the treatment were based on an exam. 
 ~~~~
 <<dd_do>>
-
 	cap drop firstprelim 
 	cap drop failed 
 	cap drop secondprelim 
 	cap drop yobs_2
 
 	***Create a score on the first prelim equal to person's actual knowledge level (y_0) and some noise. 
+	cap drop firstprelim
 	generate firstprelim = y0 + rnormal(0, 2)
 
-	***Create a new treated variable equal to 1 iff i's exam score is < 45.
+	***Create a new treatment variable equal to 1 iff i's exam score is < 45.
+	cap drop failed
 	generate failed = (firstprelim < 45)
 
 	***Create new observed y var = to potential outcome under assignment into groups via test score. 
-	generate secondprelim = y1 + rnormal(0,2)
+		**First make a secondprelim score using the first prelim score with additional noise. 
+		cap drop secondprelim
+		generate secondprelim = y1 + rnormal(0,2)
 
-	generate yobs_2 = firstprelim
-	replace  yobs_2 = secondprelim if failed == 1
-
+		cap drop obs_y2
+		generate obs_y2 = firstprelim
+		replace  obs_y2 = secondprelim if failed == 1
 <</dd_do>>
 ~~~~
+
 **What is the sign of the selection bias introduced by this assignment procedure?**   
-When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from  
-
-	Failed is associated with small y0 scores. Therefore y1 will tend to be smaller among the observed treated group (because it is a function of y0) and the y0 will tend to be higher among the observed non-treated group. Therefore this coefficient represents the treatment affect plus the sample difference in y0 between the treated and the non-treated groups
-
+When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from assigning a second prelim score to students who earned "bad" scores on the first prelim, which leads to smaller y1 scores as well (since y1 scores are a function of y0 scores). We have altered the sample in a way that creates a group of students with higher y0 scores and a group with lower y0 scores, and this difference will also be captured in the effect of taking the prelim twice.  
 
 **What is the exact magnitude of the selection bias in your sample?**   
+~~~~
+<<dd_do>>
+	***Selection Bias = Expected value of y0 for treated - expected value of y0 for untreated should be the ATE
+		**Expected value of y0 for treated
+		su obs_y2 if failed==1 
+		loc treated_mean = `r(mean)'
 
+		**Expected value of y0 for untreated 
+		su obs_y2 if failed==0 
+		loc untreated_mean = `r(mean)'
 
+		**Selection Bias
+		di in red `treated_mean'-`untreated_mean'
+<</dd_do>>
+~~~~
+The magnitude of selection bias in our sample equals -3.53.   
 
 Run a regression to estimate the difference in observed outcomes between treated and untreated groups.   
 ~~~~
 <<dd_do>>
-	reg yobs_2 failed
+	reg obs_y2 failed
 	disp in red _b[failed]
-	bysort failed: sum firstprelim
 <</dd_do>>
 ~~~~
+**Is the resulting coefficient what you expected, given your answer to the above questions and our formula from class?**  
+Yes. We see that failing the first prelim (failed=1) is associated with a -3.72 point difference in observed scores that were set equal to potential outcomes assigned based on the outcome of the first exam. This is the exact value we found when we calculated the difference between the treated and untreated means by hand. 
 
-**Is the resulting coeﬃcient what you expected, given your answer to the above questions and our formula from class?**  
+### ATE vs TOT
+
+Suppose now that people know their own treatment eﬀects, and that they are allowed to enter the treatment endogenously. Suppose further that the costs of getting the treatment vary from person to person, but that they are distributed N(−5, 4) and that they are independent of the treated and untreated outcomes. Thus, on average, people are indiﬀerent to receiving the treatment. Create a variable containing each individual’s cost.
 
 
+Speciﬁcally, assume that those people whose net beneﬁt (treatment eﬀect minus cost) choose to receive the treatment.
 
+Does this assignment mechanism create selection bias? Why or why not?
+
+Run a regression to estimate the diﬀerence in observed y between the two groups.
+
+Based on your answer to the above question, does this regression have a causal interpretation?
+
+Calculate the true TOT for this sample.
+
+Is this number consistent with your argument for or against a causal interpretation in the previous regression?
 ~~~~
 <<dd_do>>
-
+	cap drop cost 
 	generate cost = rnormal(-5, 2)
 
 	generate treated3 = 0
 	replace  treated3 = 1 if y1 - y0 - cost > 0
-	generate yobs3 = yobs_2
-	replace  yobs3 = y1 if treated3 == 1
+	
+	***Create a new observed value of y based on this endogenous assignment mechanism.
+	generate obs_y3 = obs_y2
+	replace  obs_y3 = y1 if treated3 == 1
 
 <</dd_do>>
 ~~~~

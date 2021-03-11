@@ -1,0 +1,424 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 6
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 6
+*	CREATED: 	03/09/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty	
+*	CALLS UPON:	
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	Yes	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+<<dd_do>>	
+	clear all
+	set more off
+	pause on
+	*set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+	***Set cd for header.txt file to run & opens the folder in Git for this
+	***PSET
+	cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps6/"
+
+	* dyndoc "ps6_denker.txt", replace
+	
+	glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+	glob datapath 		"${projectpath}5. Datasets/"
+	glob gendatapath 	"${projectpath}7. Generated Datasets/"
+
+<</dd_do>>
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 6
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty 
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+## Open data and Prepare for Analysis
+
+Load the Davis (AER, 2004) housing data. 
+~~~~
+<<dd_do>>
+	use "${datapath}davishousing.dta", clear
+<</dd_do>>
+~~~~
+
+### IDs and Time
+The data are quasi-panel. The parcel id could become cumbersome. Use the "group" part of "egen" to create a variable called "id" that creates unique ids for each house.
+~~~~
+<<dd_do>>
+	egen id = group(parcel)
+	order id, first
+<</dd_do>>
+~~~~
+
+This data lacks a consistent time variable that STATA can understand. Combine the year and month data into a variable called "date" in a format that STATA understands.
+~~~~
+<<dd_do>>
+	cap drop date
+	generate date = ym(year, month)
+<</dd_do>>
+~~~~
+Tabulate the values of date. Notice that this variable now has a linear interpretation with each value corresponding to a particular month, and an increase of 1 in date corresponding with one month later.
+~~~~
+<<dd_do>>
+	tab date if year==1990
+<</dd_do>>
+~~~~
+**What is the value of "date" for January 2000?**
+
+Now, use the command "format date %tm" to tell STATA that they are monthly codes.
+~~~~
+<<dd_do>>
+	format date %tm
+<</dd_do>>
+~~~~
+Tabulate the values of date again.
+~~~~
+<<dd_do>>
+	tab date if year==1990
+<</dd_do>>
+~~~~
+**See the difference?**
+Yes, the original date variable ranged from 360-371 when equal to the year 1990 and months January - December. However, when we apply the formatting, we see that these values have a label that clearly indicates the year (1990) and the month number (m1-m12) making it easier to interpret. 
+
+
+### Variables for basic Diff-in-Diff
+
+Create an "after" dummy based on the "date" variable that is 1 for "date" >= the code for January 2000, and 0 for dates before the code for January 2000.
+~~~~
+<<dd_do>>
+	***Create dummy equal to 1 for observations (house sales) occurring post-shock
+	cap drop after_dum
+	generate after_dum=.
+	replace  after_dum=1 if year>=2000 & month>=1
+	replace  after_dum=0 if year< 2000
+	
+	***Check var creation. 
+	qui tab date after_dum   if year==2000
+	qui tab date after_dum   if year==1999
+<</dd_do>>
+~~~~
+
+Create an interaction term that is 1 for observations in Churchill county in the "after" period and zero otherwise.
+~~~~
+<<dd_do>>
+	
+	***I don't know why I made the creation of this var so complicated, but here we are. Should have just used the cc dummy (smh).
+	cap drop cch_after
+	generate cch_after=0
+
+	forvalues i=2000(1)2002 {
+		forvalues x=1/2 {
+			replace cch_after=1 if cch`i'`x'==1 & after_dum==1
+		} // closes forvalues x	
+	} // closes forvalues i		
+	
+	***Check var creation. 
+	tab cch20011 after_dum, mi
+	tab cch20012 after_dum, mi
+	tab cch_after if year==2001
+
+<</dd_do>>
+~~~~
+Create the linear spline as described in the paper. Note that it is always zero for Lyon county observations. (described on p. 1695)
+
+~~~~
+<<dd_do>>
+	***"The third measure is a linear spline that is zero through 1999, rises by 1/24 a month during 2000 and 2001, and then takes the value of one."
+
+	cap drop lin_spl
+	generate lin_spl=.
+	replace  lin_spl=0 if year<2000
+	replace  lin_spl=1 if year>2001
+	
+	loc counter = .04166667 // = 1/24
+	forvalues i=1/12 {
+		qui replace lin_spl = `counter' if year==2000 & month==`i'
+		loc counter = `counter'+.04166667
+	} // closes forvalues 
+
+	forvalues i=1/12 {
+		qui replace lin_spl = `counter' if year==2001 & month==`i'
+		loc counter = `counter'+.04166667
+	} // closes forvalues
+
+	replace lin_spl=0 if cc==0 // Note that it is always zero for Lyon county observations.
+
+	***Graph to check that lin_spl correctly made. 
+	sort date 
+	graph twoway connect lin_spl date if cc==1
+
+	qui tab year lin_spl , mi // equals 1 in Dec. of 2001.
+
+<</dd_do>>
+~~~~
+
+## Preliminary Analysis
+
+Using the "tabstat" command, approximate the first 5 lines of Table 1. Note that this table is calculated using only observations prior to January, 1999.
+~~~~
+<<dd_do>>
+preserve
+	keep if year < 1999 // keep obs prior to Jan 1999
+	keep if origclass >= 1 // table in paper notes that range of this var is 1-5
+
+	qui bysort cc: tab year // check to make sure N matches table; cc is dummy for churchill county (=1) or lyons county (=0)
+	bysort cc: tabstat realsales acres sqft age origclass // realsales used in paper's table instead of sales var
+
+restore
+<</dd_do>>
+~~~~
+
+Run 5 regressions or t-tests to test the 5 null separate null hypotheses that the means of these variables are equal for Lyon and Churchill county in the population.
+~~~~
+<<dd_do>>
+preserve
+	keep if year < 1999 // keep obs prior to Jan 1999
+	keep if origclass >= 1 // table in paper notes that range of this var is 1-5
+	
+	loc i = 1
+	foreach var in realsales acres sqft age origclass {
+		qui reg `var' cc, rob
+		est sto r`i'
+		loc i = `i'+1 
+	} // closes foreach var loop 
+
+	estout r1 r2 r3 r4 r5, cells(b(star fmt(2)) se(par fmt(3)))
+
+restore	
+<</dd_do>>
+~~~~
+
+**Can you reject any of these null hypotheses? Why was this analysis useful before running any analysis based on the natural experiment?**
+
+Yes, we reject the null hypotheses that the means of the building age and condition (class) are equal for Lyon and Churchill county in the population. Comparing the means across the treated and comparison groups helps us understand whether covariates are balanced across the two groups before the treatment period. We would want to see that the treated and comparison groups are similar across a set of chosen covariates before the treatment period. 
+
+
+Now run difference-in-difference regressions on the entire sample using each of the four "control" variables (i.e. not for price).
+~~~~
+<<dd_do>>
+	foreach var in realsales acres sqft age origclass {
+		reg `var' cc##after_dum, rob noheader
+	} // closes foreach var loop 
+<</dd_do>>
+~~~~
+
+**What do you see in these regressions? Do the results support the equal trends assumption without conditioning on any controls? Why or why not?**
+From this set of regression outputs, we see that the coefficients on each of the interaction terms is statistically significant, suggesting that we can reject the null hypotheses that there is no difference in each of the home characteristics by treatment group across the time period. Because of this we can assume that different types of houses are being sold in the pre- and post-periods in the two counties. Since we might think that characteristics of homes would be associated with both the price the house sold for *and* the treatment-X-time groups we would want to include each of these covariates in a set of controls for subsequent analyses. 
+
+
+## Main Analysis
+### Table 2 Results Extended  
+
+Run a regression to replicate the results of Table 2 using the variables that you created earlier.
+~~~~
+<<dd_do>>
+	reg logrealsales cc after_dum cch_after, robust 
+<</dd_do>>
+~~~~
+**Carefully interpret each coefficient. Which coefficients are statistically significant from zero?**
+The dummy indicating treatment (cc=1) has a coefficient of about -0.0399 that is statistically significant at p < 0.001. This suggests that a home sold in Churchill county sells for about 4% less than a home sold in Lyons county holding the time period constant, and that this relationship is not due to chance.
+
+The dummy indicating the post-period (after_dum=1) has a coefficient of about 0.0395 that is statistically significant at p < 0.001. We could say that a house sold in January of 2000 or later sold for about 4% more than a home sold before this date in the sample holding county constant. 
+
+The interaction between the treatment- and post-dummies has a coefficient of about -0.077 that is statistically significant at p < 0.001. We can interpret the coefficient as the treatment effect of experiencing the cancer cluster. Specifically, we would say that homes sold in Churchill county after the cancer cluster appeared were sold for about 8% less than what we would have expected in the absence of a cancer cluster in this county over this time period.  
+
+The constant has a coefficient of about 11.63 that is significant at p < 0.001. We would interpret this term as the expected logged value for homes in Lyons county (cc=0) sold before 2000 (after_dum==0). 
+
+
+Run a regression like the one above, but replace the "after" dummy with dummies for each year. Note that this will require creating 13 dummy variables and omitting one.
+~~~~
+<<dd_do>>
+	***Create dummies for each year. 
+	cap drop year_dum*
+	tab year, gen(year_dum)
+
+	***Run reg with year_dum set instead of "after" dummy. Omit the first year.
+	glob yearset ""
+	forvalues i=2/13 {
+		glob yearset "${yearset} year_dum`i'"  
+	} // closes forvalues loop 
+
+	reg logrealsales cc cch_after $yearset , robust 
+
+<</dd_do>>
+~~~~
+
+**Explain how this specification differs from the last regression you ran in the previous section. In particular, what assumption have you relaxed when you added the multiple time dummies.**   
+This specification differs in that we have eliminated the post-dummy and replaced it with the set of years that *includes* all the years in the sample that make up the pre- and post-shock periods. 
+
+The assumption that we relax when we add the multiple time dummies is that there is a constant level change that occurs at the same time as the treatment, and yearly shocks are constant across the groups. 
+Thus, we allow for a more flexible slope in the pre- and post-shock periods by treatment group. (Is this called the "continuity" assumption?)
+
+Now include the after dummy along with the year dummies.  
+~~~~
+<<dd_do>>
+	reg logrealsales cc after_dum cch_after $yearset, robust 
+	di in red _b[cch_after]
+
+<</dd_do>>
+~~~~
+**What happens? Why?**
+We end up with another omitted year dummy in the post period due to collinearity because the entire set of year dummies includes all of the years in the post-period; therefore, we are including the same information in the regression twice (the "after dummy" perfectly predicts the set of year dummies that represent the post-shock period).    
+
+
+Return to the regression with the time dummies and no after dummy. Run it again, but replace the interaction term with the "spline" term.
+~~~~
+<<dd_do>>
+	qui reg logrealsales cc lin_spl $yearset , robust  // output not shown
+	di in red _b[lin_spl]
+<</dd_do>>
+~~~~
+**How do you interpret the coefficient on "spline" in the regression?**
+The coefficient on "spline" is about -0.11 with a standard error of about 0.02. We would say that houses sold in Churchill county after 2002 sold for about 11% less than houses sold in Lyons before the year 2000. Since this realtionship is significant at p < 0.001, we can reject the null that these results are due to chance.   
+
+**Bonus Question: Suppose that the "spline" variable more accurately captures the time pattern of the treatment than the "after" dummy. Would this explain the difference in the coefficient on the interaction dummy and the coefficient on the "spline" term between the two regressions? Why or why not?**
+The coefficient on the "spline" term is slightly larger in magnitude than the coefficient on the interaction dummy (-0.11 and -0.09, respectively). Yes, if we assume that the "shock" was not instantaneous, but instead occurred over a period of time (2000-2002), including some of the "shock years" in the post-period will bias the estimated post-shock effect downward. Weighting these "shock years" to be less than 1 will decrease the downward bias on the spline coefficient. 
+
+### Table 3 Results Extended   
+
+Now create 12 month dummies, one for each month of the year. Add all but one dummy into the regression you just ran, along with the rest of the controls listed in column 2, with the exception of the class dummies.
+~~~~
+<<dd_do>>
+	***Create the set of month dummies
+	cap drop mnth_dum*
+	tab month, gen(mnth_dum)
+
+	***Capture set of month dummies in glob to use in regression below leaving out the first month as the omitted category
+	glob monthset ""
+	forvalues i=2/12 {
+		glob monthset "${monthset} mnth_dum`i'" // leaving out jan. as omitted. 
+	} // closes forvalues loop 
+
+	***Create age squared var
+	cap drop age_sq
+	generate age_sq=(age)^2
+
+	***Create acres squared var
+	cap drop acres_sq
+	generate acres_sq=(acres)^2
+
+	***Run regression using spline and covariates + month fe + year fe
+	reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $yearset $monthset, robust 
+	di in red _b[lin_spl]
+
+<</dd_do>>
+~~~~  
+
+**Why would you want to include the month dummies in this regression?**
+We might want to control for the time of year a house is sold knowing that home prices fluctuate throughout the year because the supply of houses changes. For example, home prices are typically highest in the summer as this season is the busiest moving time of the year and people buy more aggressively than they do in the winter (i.e. less supply and more demand lead to a raise in market prices). We see that when we control for month, the coefficient on the spline variable is slightly larger in magnitude than in the specification that does not control for month.  
+
+**Does the coefficient on the linear spline change much? What does this suggest to you about the presence or absence of OVB when you left those variables (including the month dummies) out of the regression.**   
+No, it changes by about -0.1% from the first specification to the more saturated specifications. This suggests that leaving out month dummies or the set of covariates only slightly introduces OBV into the estimate. 
+
+
+Run the previous regression, but add "origclass" as a continuous covariate.
+~~~~
+<<dd_do>>
+		qui reg logrealsales cc lin_spl acres acres_sq sqft age age_sq origclass $yearset $monthset, robust  // output not shown
+		di in red _b[lin_spl]
+<</dd_do>>
+~~~~
+
+**Does the coefficient on the linear spline change? If so, in what direction? What does this change tell you about the type of houses that were more likely to sell in Churchill county after the cancer cluster was discovered.**  
+Yes, the coefficient on the linear spline is now about -0.12, a larger (more negative) magnitude than what was previously estimated. This change indicates that houses in better condition were more likely to be sold in Churchill county after the cancer cluster was discovered and controlling for the condition of the house results in a slightly larger, negative treatment effect.  
+
+
+Finally, replicate the specification in column 2 as closely as possible. For the class dummies, you may use the dummies that already exist (class05-class45). Remember to omit one dummy variable from each set.
+~~~~
+<<dd_do>>
+	***Check out class dummies that came in data
+	su class*
+
+	***The dummy class05 is not made correctly (mean=0). Will remake here and then include it as the omitted category
+	tab origclass, mi
+	cap drop classtotal 
+	egen 	 classtotal = rowtotal(class*)
+	tab classtotal class05, mi
+	// the observations that > 1 in the "origclass" variable = 435. This is the same value that we should observe in the class05 dummy variable as indicated in the crosstab with classtotal. 
+	replace class05=1 if origclass < 1 // should be 435 changes. 
+	
+	***Create global to store set of class dummies used in regression below. 
+	glob classset ""
+	forvalues i=10(5)45 {
+		glob classset "${classset} class`i'"
+	} 	// closes forvalues loop 
+
+	***Run regression
+	reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $yearset $monthset $classset, robust // output not shown
+	est sto myc_fe
+	di in red _b[lin_spl]
+
+<</dd_do>>
+~~~~
+
+### Treating Time Differently    
+  
+Run another specification like the one above (the one that replicates column 2), but omit the month and year dummies. Instead, include a dummy variable for each value of the "date" variable (except one).  
+
+~~~~
+<<dd_do>>
+	***Create set of date dummies
+	cap drop date_dum*
+	qui tab date, gen(date_dum)
+
+	***Create global to capture date dummies used in regression below omitting the first date category
+	glob datedum ""
+	forvalues i=2(1)153 {
+		glob datedum "${datedum} date_dum`i'"
+	} // closes forvalues loop 
+	
+	***Run regression
+	reg logrealsales cc lin_spl acres acres_sq sqft age age_sq $datedum $classset, robust 	
+	est sto dc_fe
+<</dd_do>>
+~~~~
+
+**Explain the difference between these two specifications.**  
+The coefficients on the house characteristics included as covariates are equal across the two specifications. We see that the coefficient on the "spline" variable has increased in magnitude from -0.155 in the regression with month and year dummies to -0.157 in the regression with the date dummies. Additionally, we see that constant changed slightly from 10.94 to 10.98. 
+
+This might be because the date dummies look within each month/year *combination* while including the two sets of dummies (month and year) look within each year separately, and then each month, separately, at variation that can be used to estimate the treatment effect. 
+
+Now change the LHS variable to "lognomsales" - the log of the nominal sales price.  
+
+~~~~
+<<dd_do>>
+	
+	reg lognomsales cc lin_spl acres acres_sq sqft age age_sq $datedum $classset, robust 	
+	est sto log_dc_fe
+
+	***Make an estout table so that it easy to compare the last three regs.
+	estout myc_fe dc_fe log_dc_fe, cells(b(star fmt(3)) se(par fmt(3))) drop(date_dum* class* mnth_dum* year_dum*)
+<</dd_do>>
+~~~~ 
+**Do any of the coefficients change besides the date dummies? Explain why this is the case.**  
+
+No, the coefficients on the house characteristics used as covariates are the same between the model where the log of the nominal sales price is the outcome and the model with the log of real sales prices as the outcome. This makes sense because "real" sales prices would suggest that these values are calculated while controlling for inflation. Thus, we understand that changes in house prices in "real terms" already excludes the effect of inflation. When we compare this to the "nominal price", we see that adding the set of date dummies is ultimately doing the same thing, inflation is being controlled for with the set of date dummies since the deflation process happens twice a year. 
+
