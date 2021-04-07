@@ -49,6 +49,7 @@
 *
 *******************************
 <</dd_remove>>
+
 <<dd_version: 1>>
 <<dd_include: header.txt>>
 
@@ -60,6 +61,15 @@ Collaborators: Michelle Doughty & Dan Mangan
 Date: <<dd_display: c(current_date)>>  
 
 <nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+
+<<dd_remove>>
+*******************************
+*
+*	1. Potential Outcomes Framework
+*
+*******************************
+<</dd_remove>>
 
 ## Potential Outcomes Framework 
 
@@ -109,7 +119,7 @@ Mimic the random assignment that would occur in an experiment.
 	replace  obs_y = y1 if treated == 1
 
 	***Run a reg. to get the difference in means of the observed value of y_i between treated/untreated groups.
-	reg obs_y treated
+	regr obs_y treated, robust
 	disp in red _b[treated] //coef. of interest is on treated
 <</dd_do>>
 ~~~~
@@ -151,12 +161,13 @@ When we use the score from taking the preliminary exam the first time to assign 
 ~~~~
 <<dd_do>>
 	***Selection Bias = Expected value of y0 for treated - expected value of y0 for untreated should be the ATE
+		
 		**Expected value of y0 for treated
-		su obs_y2 if failed==1 
+		sum obs_y2 if failed==1 
 		loc treated_mean = `r(mean)'
 
 		**Expected value of y0 for untreated 
-		su obs_y2 if failed==0 
+		sum obs_y2 if failed==0 
 		loc untreated_mean = `r(mean)'
 
 		**Selection Bias
@@ -168,108 +179,168 @@ The magnitude of selection bias in our sample equals -3.53.
 Run a regression to estimate the difference in observed outcomes between treated and untreated groups.   
 ~~~~
 <<dd_do>>
-	reg obs_y2 failed
+	regr obs_y2 failed, robust
 	disp in red _b[failed]
 <</dd_do>>
 ~~~~
+
 **Is the resulting coefficient what you expected, given your answer to the above questions and our formula from class?**  
-Yes. We see that failing the first prelim (failed=1) is associated with a -3.72 point difference in observed scores that were set equal to potential outcomes assigned based on the outcome of the first exam. This is the exact value we found when we calculated the difference between the treated and untreated means by hand. 
+Yes. We see that failing the first prelim (failed=1) is associated with a -3.53 point difference in observed scores that were set equal to potential outcomes assigned based on the outcome of the first exam. This is the exact value we found when we calculated the difference between the treated and untreated means by hand. 
 
-### ATE vs TOT
+### ATE vs TOT  
 
-Suppose now that people know their own treatment eﬀects, and that they are allowed to enter the treatment endogenously. Suppose further that the costs of getting the treatment vary from person to person, but that they are distributed N(−5, 4) and that they are independent of the treated and untreated outcomes. Thus, on average, people are indiﬀerent to receiving the treatment. Create a variable containing each individual’s cost.
-
-
-Speciﬁcally, assume that those people whose net beneﬁt (treatment eﬀect minus cost) choose to receive the treatment.
-
-Does this assignment mechanism create selection bias? Why or why not?
-
-Run a regression to estimate the diﬀerence in observed y between the two groups.
-
-Based on your answer to the above question, does this regression have a causal interpretation?
-
-Calculate the true TOT for this sample.
-
-Is this number consistent with your argument for or against a causal interpretation in the previous regression?
+Suppose now that people know their own treatment effects, and that they are allowed to enter the treatment endogenously. Suppose further that the costs of getting the treatment vary from person to person, but that they are distributed N(-5, 4) and that they are independent of the treated and untreated outcomes. Thus, on average, people are indifferent to receiving the treatment. Create a variable containing each individual's cost.  
 ~~~~
 <<dd_do>>
+	***Creating var to represent variable cost of treatment. 
 	cap drop cost 
 	generate cost = rnormal(-5, 2)
 
+	***Specifically, assume that those people whose net benefit (treatment effect minus cost) choose to receive the treatment.  
+	cap drop treated3 
 	generate treated3 = 0
 	replace  treated3 = 1 if y1 - y0 - cost > 0
+
+	twoway (scatter cost treated3) ///
+		   (lfit cost treated3)
 	
 	***Create a new observed value of y based on this endogenous assignment mechanism.
-	generate obs_y3 = obs_y2
+	cap drop obs_y3 
+	generate obs_y3 = obs_y
 	replace  obs_y3 = y1 if treated3 == 1
 
+	**Expected value of y0 for treated
+	sum obs_y3 if treated3==1 
+	loc treated_mean = `r(mean)'
+
+	**Expected value of y0 for untreated 
+	sum obs_y3 if treated3==0 
+	loc untreated_mean = `r(mean)'
+
+	**Selection Bias
+	di in red `treated_mean'-`untreated_mean'
+
 <</dd_do>>
 ~~~~
+Does this assignment mechanism create selection bias? Why or why not?  
+No, this assignment mechanism does not create bias because treatment was assigned independent of the untreated potential outcome. Here, selection into treatment groups is based on potential *treated* outcomes.
 
 
-
+Run a regression to estimate the difference in observed y between the two groups.   
 ~~~~
 <<dd_do>>
-
-	reg yobs3 treated3
+	regr obs_y3 treated3, robust
 	disp in red _b[treated3]
-
 <</dd_do>>
 ~~~~
 
+Based on your answer to the above question, does this regression have a causal interpretation?  
+This regression does provide a causal estimatation for the treated group as long as the CIA assumption holds. 
 
+
+Calculate the true TOT for this sample.   
 ~~~~
 <<dd_do>>
 
-	sum effect if treated3 == 1, meanonly
-	disp in red  r(mean)
+	summ effect if treated3 == 1, meanonly
+	disp in red  `r(mean)'
 
 <</dd_do>>
 ~~~~
+
+Is this number consistent with your argument for or against a causal interpretation in the previous regression?   
+
+	The TOT estimated here is about 5.0. This is consistent with the argument for a causal interpretation of the previous regression because we believe that assignment to treatment was independent of the potential untreated outcomes for both groups since we generated random observations for each part of the function that sorted into treatment groups. This helps us believe that the CIA holds and that the TOT will be equal to the ATE. 
+
+
+
+
 
 
 ### Omitted Variable Bias
 	
+Bivariate vs. Multivariate Regression
 
-
+First, I need to load the new dataset to investigate the research question: How do increased expenditures at the school level affect students' performance on standardized tests? 
 ~~~~
 <<dd_do>>
-
 	use "${datapath}schoolexp.dta", replace
+<</dd_do>>
+~~~~
+
+Run a regression of "read4" on "exppp".
+~~~~
+<<dd_do>>
 	reg read4 exppp, robust
-
+	loc exppp_r1 = _b[exppp]
 <</dd_do>>
 ~~~~
 
+**Interpret the regression, including the magnitude.**   
+We see that for every $ 1,000 per pupil increase in expenditures, we estimate about 0.5% fewer students will score proficient on a 4th grade reading test.  However, we see that this estimate is not statistically different than zero, and so we cannot reject the null hypothesis that there is not a realtionship between 4th grade reading proficiency percentages and per pupil expenditures.   
+
+
+Without additional controls, it is unlikely that this regression has a causal interpretation. Suppose that you are considering adding a control variable in the hopes of more closely approximating a regression specification for which you could invoke the CIA. In particular, consider "lunch", or the percent of the school's students who are eligible for the federal free lunch program. Eligible students come from families with relatively low incomes. **What do you think is the likely sign on the coefficient for "lunch" if you were to include it in the above regression. Why?**  
+We would most likely observe a *negative* sign on the "lunch" coefficient since we know from the literature that students who are a part of families with fewer socioeconomic resources tend to have lower scores on academic tests.   
+
+**Given your answer above, what do you expect to be the sign of the omitted variable bias in your bivariate specification? Why?**   
+The sign of the omitted variable bias is likely negative in the bivariate specification. We assume that "lunch" and the test score variable are *negatively* correlated as previously discussed. Additionally, we would believe that "lunch" and "exppp" (pupil expenditures) would be positively correlated - that is, schools with higher per pupil expenditures would also have wealthier students. This makes sense given how school funding for public schools typically works. Thus, a negative sign with a positive sign on these two correlations would result in negative omitted variable bias.   
+
+Run the speciﬁcation that includes "lunch" as an additional control variable.
 ~~~~
 <<dd_do>>
-
 	reg read4 exppp lunch, robust
+	loc exppp_r2 = _b[exppp]
+<</dd_do>>
+~~~~
 
+**Did the addition of the "lunch" variable change the coefficient on the "exppp" variable in the way you expected? What have you learned about the (sample) correlation between expenditure per pupil and the percent of students who are eligible for the free lunch program?**    
+The sign on the "exppp" variable is now positive after controlling for the proportion of students in schools that qualify for free/reduced lunch. Thus, we can conclude that "lunch" and "exppp" are positively correlated like we supposed. 
+
+
+**What is your best guess of the magnitude of the omitted variable bias simply by comparing these two regressions?**  
+To understand the magnitude of the omitted variable bias we can simply subtract the coefficient on "exppp" from the bivariate regression from the coefficient on "exppp" from the regression that controls for "lunch". 
+~~~~
+<<dd_do>>
+	loc diff = `exppp_r2' - `exppp_r1'
+	di in red "Omitted Variable Bias = `diff'"
 <</dd_do>>
 ~~~~
 
 
 
+Calculate the omitted variable bias using the formula discussed in the notes. You will need to run an auxiliary regression.
 ~~~~
 <<dd_do>>
 
-	reg read4 exppp lunch, robust
-	global beta1cor = _b[exppp]
-	global beta2cor = _b[lunch]
+	regr read4 exppp lunch, robust
+	glob beta1cor = _b[exppp]
+	glob beta2cor = _b[lunch]
 
-	reg read4 exppp
+	regr read4 exppp, robust
 	disp _b[exppp] - $beta1cor
 
-	reg lunch exppp
+	regr lunch exppp, robust
 	disp _b[exppp] * $beta2cor
 
 <</dd_do>>
 ~~~~
 
+**Were you able to get the same omitted variable bias that you saw by running the bivariate and multivariate regressions?**    
+Yes, we get the same result (0.0025) from both methods. 
 
 ### FWL
+Use the decomposition suggested by FWL to calculate the coefficient on "exppp" in the multi-variate regression.
 
+Check that the coefficient is the same and that the two sets of residuals are identical as the theorem suggests.
+
+Create two scatter plots of the data used to identify the coefficient on exppp, one for the bivariate regression, and one for the transformed data that went into your final regression using the FWL method. Save each one into your workspace.
+
+Use the "graph combine" command to put these graphs into one figure. Export a copy of this graph to a graphics format (e.g. pdf, png, etc.) and include a copy with your submission.
+
+Explain the difference in what the variation in these two scatter plots represents. In particular, what does it mean for a school to be above or below the mean of the x-variable in each plot?
+
+Do you think that you would be justified in applying the CIA to the regression that includes both "exppp" and "lunch"? In other words, can you call the estimated coefficient the causal effect of spending another dollar on test scores? If not, list two potential omitted variables and sign the bias of each. If you think you would be justified, list two potential omitted variables and argue why the bias would be zero.
 
 ~~~~
 <<dd_do>>
@@ -297,85 +368,135 @@ Is this number consistent with your argument for or against a causal interpretat
 
 ### Signing the Bias
 
+For each of these regressions, select an additional variable that you believe would need to be included in a multi-variate regression in order to estimate a causal parameter. Describe what you expect the sign of the omitted variable bias to be (positive, negative, or zero). Show your work, i.e. spell out the full argument for your answer.
 
 
-### Matching
+A bivariate regression of birthweight on mother's daily smoking.  
+
+A bivariate regression of patient's subjective health on health insurance coverage.
+
+A bivariate regression of age at which a young woman becomes sexually active on whether she eats breakfast in the morning.
+
+
+### Matching   
+For this section, use the "matching ps5.dta" data available on D2L.
 
 ~~~~
 <<dd_do>>
-
 	use "${datapath}matching_ps5.dta", clear
+<</dd_do>>
+~~~~
+These data have been constructed to satisfy the CIA. Treatment is not randomly assigned unconditionally, but treatment is randomly assigned conditional on gender. These data have been simulated, and thus they include both potential outcomes.
 
-	gen te = y1 - y0
-	mean te if female == 1
-	mean te if female == 0
-	mean te
-	bysort female: sum treated
+**What is the true ATE for women?**
+~~~~
+<<dd_do>>
+	cap drop t_effect
+	generate t_effect = y1 - y0
 
+	mean t_effect if female == 1
+<</dd_do>>
+~~~~
+
+**What is the true ATE for men?**
+~~~~
+<<dd_do>>
+	mean t_effect if female == 0
 <</dd_do>>
 ~~~~
 
 
+**What is the overall ATE for the sample?**
 ~~~~
 <<dd_do>>
+	mean t_effect
+<</dd_do>>
+~~~~
 
+**What fraction of each gender received the treatment?**
+~~~~
+<<dd_do>>
+	bysort female: sum treated
+<</dd_do>>
+~~~~
+
+**Does this assignment mechanism create selection bias? How do you know?**  
+~~~~
+<<dd_do>>
 	sort female
 	bysort female: sum y0 y1
 	bysort female: compare yobs y1
-
 <</dd_do>>
 ~~~~
 
-
+Run a regression of "yobs" on "treated".
 ~~~~
 <<dd_do>>
-
 	reg yobs treated, robust
-
 <</dd_do>>
 ~~~~
+ **Does this regression identify a causal effect? Why or why not?**
 
+
+Run the same regression separately on the male and female subsamples. 
 ~~~~
 <<dd_do>>
-
 	bysort female: reg yobs treated, robust
-
 <</dd_do>>
 ~~~~
+**Do these regressions have a causal interpretation?**   
 
+
+Run an interaction model to get the results of these two regressions in a single regression. 
 ~~~~
 <<dd_do>>
-
 	reg yobs treated##female, robust
-
 <</dd_do>>
 ~~~~
+**Interpret each of the coefficients. Explain how you could use the results of this regression to estimate both the ATE and the TOT. **  
 
 
+Now run a regression of yobs” on "treated" and "female". 
 ~~~~
 <<dd_do>>
-
 	reg yobs treated female, robust
-
 <</dd_do>>
 ~~~~
+**Does this regression have a causal interpretation? If so, which kind of treatment effect? Defend your answer, paying attention to all of the necessary assumptions that we discussed in class.**
 
 
+Now use the "psmatch2" command to use matching to identify the various treatment effects. Begin by using radius matching with a caliper of 0.5. Include the option to calculate both the ATE and the ATT/TOT.
 ~~~~
 <<dd_do>>
-
 	psmatch2 treated female, outcome(yobs) caliper(0.5) ate
 	disp in red "ATE: " r(ate) ", ATT: " r(att)
-
 <</dd_do>>
 ~~~~
+** Does this matching mechanism lead to the results you expected? Explain why or why not?**  
 
 
+Re-run the matching estimator using a smaller bandwith (e.g. 0.1). 
 ~~~~
 <<dd_do>>
-
 	psmatch2 treated female, outcome(yobs) caliper(0.1) ate
 	disp "ATE: " r(ate) ", ATT: " r(att)
-
 <</dd_do>>
 ~~~~
+**Explain how this smaller bandwidth allows you to get more reasonable results.**   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

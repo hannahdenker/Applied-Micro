@@ -47,7 +47,7 @@ try {
 <p>Course: ECON 8848<br />
 Author: Hannah Denker<br />
 Collaborators: Michelle Doughty &amp; Dan Mangan<br />
-Date:  5 Mar 2021</p>
+Date: 11 Mar 2021</p>
 <nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
 <h2><a href="#potential-outcomes-framework" id="potential-outcomes-framework">Potential Outcomes Framework</a></h2>
 <pre><code>.         ***Set # of obs to 100,000
@@ -57,26 +57,27 @@ number of observations (_N) was 0, now 100,000
 .         set seed 123456
 
 . 
-.         ***For each individual, draw two potential outcomes represeting knowledge of micro in treated y_1 and u
-&gt; ntreated y_0 states of the world.
+.         ***For each individual, draw two potential outcomes representing knowledge of micro in treated 
+&gt; y_1 and untreated y_0 states of the world.
 .         cap drop y0 
 
 .         cap drop y1 
 
 .         cap drop effect 
 
-.         generate y0 = rnormal(50, 5)
+.         generate y0 = rnormal(50, 5) // untreated outcome has mean of 50 with sd of 5
 
-.         generate y1 = y0 + rnormal(5, 2)
+.         generate y1 = y0 + rnormal(5, 2) // treated outcome will be equal to the untreated outcome +/- 
+&gt; some amount where the mean of the amount is 5 an the sd=2
 
 . 
 .         ***Create var that is each individual's effect of having to take prelim second time. 
-.         generate effect = y1 - y0 
+.         generate effect = y1 - y0 // treated outcome - untreated outcome
 
 </code></pre>
 <h3><a href="#selection-bias" id="selection-bias">Selection Bias</a></h3>
 <p><strong>If you could observe both potential outcomes for each individual, what would you do?</strong><br />
-To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We could then find the mean of this variable to identify the average causal effect across the sample (which is what we do when we make the &lsquo;effect&rsquo; variable above.)</p>
+To observe the potential outcomes for each individual, we would want to create a new variable in our dataset that would be the difference between the treated and untreated outcome for each individual. We&rsquo;ve done this in the creation of the &ldquo;effect&rdquo; variable above. We can then find the mean of this variable to identify the average causal effect across the sample.</p>
 <p><strong>Does it match what you expected?</strong></p>
 <pre><code>.         qui sum effect, meanonly
 
@@ -84,48 +85,52 @@ To observe the potential outcomes for each individual, we would want to create a
 5.0025634
 
 </code></pre>
-<p>The mean of the &ldquo;effect&rdquo; variable is 5.003. We would expect that this value <em>would</em> be close to 5 since the mean of the &lsquo;noise&rsquo; we added to the treated potential outcome is 5.</p>
+<p>The mean of the &ldquo;effect&rdquo; variable is 5.003. We would expect that this value <em>would</em> be close to 5 since the mean of the &lsquo;noise&rsquo; we added in the creation of the treated potential outcome equals 5.</p>
 <p>Mimic the random assignment that would occur in an experiment.</p>
 <pre><code>.         ***Create var that has a 0.5 prob of being 1 and is 0 otherwise
-.         cap drop treated yobs
+.         set seed 123456
 
-.         generate treated = (runiform() &gt; 0.5)
+.         cap drop treated
 
-. 
-.         ***Create a var that is the observed potential outcome for each individual based on group assignment. 
-.         generate yobs = y0
-
-.         replace yobs = y1 if treated == 1
-(49,890 real changes made)
+.         generate treated = runiform() &gt; 0.5
 
 . 
-.         ***Run a reg. to get the difference in means of the observed value of y_i between treated/untreated gro
-&gt; ups.
-.         reg yobs treated
+.         ***Create a var that is the observed potential outcome for each individual based on group assig
+&gt; nment. 
+.         cap drop obs_y
 
-      Source |       SS           df       MS      Number of obs   =   100,000
--------------+----------------------------------   F(1, 99998)     =  22663.17
-       Model |  612498.244         1  612498.244   Prob &gt; F        =    0.0000
-    Residual |  2702561.47    99,998  27.0261552   R-squared       =    0.1848
--------------+----------------------------------   Adj R-squared   =    0.1848
-       Total |  3315059.71    99,999  33.1509286   Root MSE        =    5.1987
+.         generate obs_y = y0
+
+.         replace  obs_y = y1 if treated == 1
+(50,079 real changes made)
+
+. 
+.         ***Run a reg. to get the difference in means of the observed value of y_i between treated/untre
+&gt; ated groups.
+.         regr obs_y treated, robust
+
+Linear regression                               Number of obs     =    100,000
+                                                F(1, 99998)       =   23669.21
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.1914
+                                                Root MSE          =     5.2017
 
 ------------------------------------------------------------------------------
-        yobs |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+             |               Robust
+       obs_y |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-     treated |   4.949752   .0328793   150.54   0.000     4.885309    5.014195
-       _cons |   50.03245   .0232236  2154.38   0.000     49.98693    50.07797
+     treated |   5.060769   .0328946   153.85   0.000     4.996296    5.125242
+       _cons |   49.98398   .0224287  2228.57   0.000     49.94002    50.02794
 ------------------------------------------------------------------------------
 
-.         disp in red _b[treated] //coef. of interest in on treated
-4.9497523
+.         disp in red _b[treated] //coef. of interest is on treated
+5.0607689
 
 </code></pre>
-<p><strong>Does this regression coeﬃcient match the true ATE?</strong><br />
-The coefficient on the treated dummy is 4.9998, with a standard error of 0.032. We would conclude that this estimate captures the true ATE within its confidence interval.</p>
-<p>Now, mimic the assignemnt that would occur if assignment to the treatment were based on an exam.</p>
-<pre><code>. 
-.         cap drop firstprelim 
+<p><strong>Does this regression coefficient match the true ATE?</strong><br />
+The coefficient on the treated dummy is 4.9498, with a standard error of 0.033. We would conclude that this estimate captures the true ATE within its estimated confidence interval.</p>
+<p>Now, mimic the assignment that would occur if assignment to the treatment were based on an exam.</p>
+<pre><code>.         cap drop firstprelim 
 
 .         cap drop failed 
 
@@ -134,116 +139,192 @@ The coefficient on the treated dummy is 4.9998, with a standard error of 0.032. 
 .         cap drop yobs_2
 
 . 
-.         ***Create a score on the first prelim equal to person's actual knowledge level (y_0) and some noise. 
+.         ***Create a score on the first prelim equal to person's actual knowledge level (y_0) and some n
+&gt; oise. 
+.         cap drop firstprelim
+
 .         generate firstprelim = y0 + rnormal(0, 2)
 
 . 
-.         ***Create a new treated variable equal to 1 iff i's exam score is &lt; 45.
+.         ***Create a new treatment variable equal to 1 iff i's exam score is &lt; 45.
+.         cap drop failed
+
 .         generate failed = (firstprelim &lt; 45)
 
 . 
-.         ***Create new observed y var = to potential outcome under assignment into groups via test score. 
-.         generate secondprelim = y1 + rnormal(0,2)
+.         ***Create new observed y var = to potential outcome under assignment into groups via test score
+&gt; . 
+.                 **First make a secondprelim score using the first prelim score with additional noise. 
+.                 cap drop secondprelim
+
+.                 generate secondprelim = y1 + rnormal(0,2)
 
 . 
-.         generate yobs_2 = firstprelim
+.                 cap drop obs_y2
 
-.         replace  yobs_2 = secondprelim if failed == 1
-(17,630 real changes made)
+.                 generate obs_y2 = firstprelim
 
-. 
+.                 replace  obs_y2 = secondprelim if failed == 1
+(17,697 real changes made)
+
 </code></pre>
 <p><strong>What is the sign of the selection bias introduced by this assignment procedure?</strong><br />
-When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from</p>
-<pre><code>Failed is associated with small y0 scores. Therefore y1 will tend to be smaller among the observed treated group (because it is a function of y0) and the y0 will tend to be higher among the observed non-treated group. Therefore this coefficient represents the treatment affect plus the sample difference in y0 between the treated and the non-treated groups
-</code></pre>
+When we use the score from taking the preliminary exam the first time to assign students into treatment or control groups, we see that negative selection bias is introduced. This results from assigning a second prelim score to students who earned &ldquo;bad&rdquo; scores on the first prelim, which leads to smaller y1 scores as well (since y1 scores are a function of y0 scores). We have altered the sample in a way that creates a group of students with higher y0 scores and a group with lower y0 scores, and this difference will also be captured in the effect of taking the prelim twice.</p>
 <p><strong>What is the exact magnitude of the selection bias in your sample?</strong></p>
-<p>Run a regression to estimate the difference in observed outcomes between treated and untreated groups.</p>
-<pre><code>.         reg yobs_2 failed
+<pre><code>.         ***Selection Bias = Expected value of y0 for treated - expected value of y0 for untreated shoul
+&gt; d be the ATE
+.                 
+.                 **Expected value of y0 for treated
+.                 sum obs_y2 if failed==1 
 
-      Source |       SS           df       MS      Number of obs   =   100,000
--------------+----------------------------------   F(1, 99998)     =  10379.92
-       Model |   179813.89         1   179813.89   Prob &gt; F        =    0.0000
-    Residual |   1732289.2    99,998  17.3232385   R-squared       =    0.0940
--------------+----------------------------------   Adj R-squared   =    0.0940
-       Total |  1912103.09    99,999  19.1212221   Root MSE        =    4.1621
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      obs_y2 |     17,697    48.18611     3.98883   29.22013   62.14917
+
+.                 loc treated_mean = `r(mean)'
+
+. 
+.                 **Expected value of y0 for untreated 
+.                 sum obs_y2 if failed==0 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      obs_y2 |     82,303    51.71573    4.198857   45.00004   73.10788
+
+.                 loc untreated_mean = `r(mean)'
+
+. 
+.                 **Selection Bias
+.                 di in red `treated_mean'-`untreated_mean'
+-3.5296237
+
+</code></pre>
+<p>The magnitude of selection bias in our sample equals -3.53.</p>
+<p>Run a regression to estimate the difference in observed outcomes between treated and untreated groups.</p>
+<pre><code>.         regr obs_y2 failed, robust
+
+Linear regression                               Number of obs     =    100,000
+                                                F(1, 99998)       =   11190.90
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0948
+                                                Root MSE          =     4.1625
 
 ------------------------------------------------------------------------------
-      yobs_2 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+             |               Robust
+      obs_y2 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-      failed |  -3.518851   .0345385  -101.88   0.000    -3.586547   -3.451156
-       _cons |   51.70234   .0145021  3565.17   0.000     51.67392    51.73076
+      failed |  -3.529624   .0333654  -105.79   0.000    -3.595019   -3.464228
+       _cons |   51.71573   .0146361  3533.44   0.000     51.68705    51.74442
 ------------------------------------------------------------------------------
 
 .         disp in red _b[failed]
--3.5188514
-
-.         bysort failed: sum firstprelim
-
------------------------------------------------------------------------------------------------------------------
--&gt; failed = 0
-
-    Variable |        Obs        Mean    Std. Dev.       Min        Max
--------------+---------------------------------------------------------
- firstprelim |     82,370    51.70234    4.200036   45.00031   74.06194
-
------------------------------------------------------------------------------------------------------------------
--&gt; failed = 1
-
-    Variable |        Obs        Mean    Std. Dev.       Min        Max
--------------+---------------------------------------------------------
- firstprelim |     17,630    42.07094    2.468977   27.95119   44.99979
-
+-3.5296237
 
 </code></pre>
-<p><strong>Is the resulting coeﬃcient what you expected, given your answer to the above questions and our formula from class?</strong></p>
-<pre><code>. 
+<p><strong>Is the resulting coefficient what you expected, given your answer to the above questions and our formula from class?</strong><br />
+Yes. We see that failing the first prelim (failed=1) is associated with a -3.72 point difference in observed scores that were set equal to potential outcomes assigned based on the outcome of the first exam. This is the exact value we found when we calculated the difference between the treated and untreated means by hand.</p>
+<h3><a href="#ate-vs-tot" id="ate-vs-tot">ATE vs TOT</a></h3>
+<p>Suppose now that people know their own treatment eﬀects, and that they are allowed to enter the treatment endogenously. Suppose further that the costs of getting the treatment vary from person to person, but that they are distributed N(−5, 4) and that they are independent of the treated and untreated outcomes. Thus, on average, people are indiﬀerent to receiving the treatment. Create a variable containing each individual’s cost.</p>
+<pre><code>.         ***Creating var to represent variable cost of treatment. 
+.         cap drop cost 
+
 .         generate cost = rnormal(-5, 2)
 
 . 
+.         ***Specifically, assume that those people whose net benefit (treatment effect minus cost) choos
+&gt; e to receive the treatment.  
+.         cap drop treated3 
+
 .         generate treated3 = 0
 
 .         replace  treated3 = 1 if y1 - y0 - cost &gt; 0
-(99,980 real changes made)
+(99,978 real changes made)
 
-.         generate yobs3 = yobs_2
+. 
+.         twoway (scatter cost treated3) ///
+&gt;                    (lfit cost treated3)
 
-.         replace  yobs3 = y1 if treated3 == 1
-(99,980 real changes made)
+.         
+.         ***Create a new observed value of y based on this endogenous assignment mechanism.
+.         cap drop obs_y3 
+
+.         generate obs_y3 = obs_y2
+
+.         replace  obs_y3 = y1 if treated3 == 1
+(99,978 real changes made)
+
+. 
+.         **Expected value of y0 for treated
+.         sum obs_y3 if treated3==1 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      obs_y3 |     99,978    55.01605    5.391469   30.12358   76.72649
+
+.         loc treated_mean = `r(mean)'
+
+. 
+.         **Expected value of y0 for untreated 
+.         sum obs_y3 if treated3==0 
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      obs_y3 |         22    49.51476    7.222297   36.03545   61.37553
+
+.         loc untreated_mean = `r(mean)'
+
+. 
+.         **Selection Bias
+.         di in red `treated_mean'-`untreated_mean'
+5.5012861
 
 . 
 </code></pre>
-<pre><code>. 
-.         reg yobs3 treated3
+<p>Does this assignment mechanism create selection bias? Why or why not?</p>
+<p>Run a regression to estimate the diﬀerence in observed y between the two groups.</p>
+<pre><code>.         regr obs_y3 treated3, robust
 
-      Source |       SS           df       MS      Number of obs   =   100,000
--------------+----------------------------------   F(1, 99998)     =     26.33
-       Model |  765.343096         1  765.343096   Prob &gt; F        =    0.0000
-    Residual |  2906866.78    99,998  29.0692491   R-squared       =    0.0003
--------------+----------------------------------   Adj R-squared   =    0.0003
-       Total |  2907632.12    99,999   29.076612   Root MSE        =    5.3916
+Linear regression                               Number of obs     =    100,000
+                                                F(1, 99998)       =      13.37
+                                                Prob &gt; F          =     0.0003
+                                                R-squared         =     0.0002
+                                                Root MSE          =     5.3919
 
 ------------------------------------------------------------------------------
-       yobs3 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+             |               Robust
+      obs_y3 |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
 -------------+----------------------------------------------------------------
-    treated3 |   6.186664   1.205717     5.13   0.000     3.823474    8.549854
-       _cons |   48.82947   1.205596    40.50   0.000     46.46651    51.19242
+    treated3 |   5.501286   1.504508     3.66   0.000     2.552468    8.450104
+       _cons |   49.51476   1.504412    32.91   0.000     46.56613    52.46339
 ------------------------------------------------------------------------------
 
 .         disp in red _b[treated3]
-6.1866639
+5.5012861
 
-. 
 </code></pre>
+<p>Based on your answer to the above question, does this regression have a causal interpretation?</p>
+<p>Calculate the true TOT for this sample.</p>
 <pre><code>. 
-.         sum effect if treated3 == 1, meanonly
+.         summ effect if treated3 == 1, meanonly
 
-.         disp in red  r(mean)
-5.0037094
+.         disp in red  `r(mean)'
+5.0036298
 
 . 
 </code></pre>
+<p>Is this number consistent with your argument for or against a causal interpretation in the previous regression?</p>
 <h3><a href="#omitted-variable-bias" id="omitted-variable-bias">Omitted Variable Bias</a></h3>
+<p>Bivariate vs. Multivariate Regression</p>
+<p>Run a regression of &ldquo;read4&rdquo; on &ldquo;exppp&rdquo;.</p>
+<p>Interpret the regression, including the magnitude. Doing so may require calculating some descriptive statistics and carefully reading variable labels.</p>
+<p>Without additional controls, it is unlikely that this regression has a causal interpretation. Suppose that you are considering adding a control variable in the hopes of more closely approximating a regression speciﬁcation for which you could invoke the CIA. In particular, consider &ldquo;lunch&rdquo;, or the percent of the school’s students who are eligible for the federal free lunch program. Eligible students come from families with relatively low incomes.</p>
+<p>What do you think is the likely sign on the coeﬃcient for &ldquo;lunch&rdquo; if you were to include it in the above regression. Why?</p>
+<p>Given your answer above, what do you expect to be the sign of the omitted variable bias in your bivariate speciﬁcation? Why? Be precise with your answer, including the expected sign of other relevant correlations.</p>
+<p>Run the speciﬁcation that includes &ldquo;lunch&rdquo; as an additional control variable.</p>
+<p>Did the addition of the &ldquo;lunch&rdquo; variable change the coeﬃcient on the &ldquo;exppp&rdquo; variable in the way you expected? What have you learned about the (sample) correlation between expenditure per pupil and the percent of students who are eligible for the free lunch program?</p>
+<p>What is your best guess of the magnitude of the omitted variable bias simply by comparing these two regressions?</p>
+<p>Calculate the omitted variable bias using the formula discussed in the notes. You will need to run an auxiliary regression.</p>
+<p>Were you able to get the same omitted variable bias that you saw by running the bivariate and multivariate regressions?</p>
 <pre><code>. 
 .         use &quot;${datapath}schoolexp.dta&quot;, replace
 
@@ -350,6 +431,12 @@ Linear regression                               Number of obs     =      1,823
 . 
 </code></pre>
 <h3><a href="#fwl" id="fwl">FWL</a></h3>
+<p>Use the decomposition suggested by FWL to calculate the coeﬃcient on “exppp” in the multi-variate regression.</p>
+<p>Check that the coeﬃcient is the same and that the two sets of residuals are identical as the theorem suggests.</p>
+<p>Create two scatter plots of the data used to identify the coeﬃcient on exppp, one for the bivariate regression, and one for the transformed data that went into your ﬁnal regression using the FWL method. Save each one into your workspace.</p>
+<p>Use the &ldquo;graph combine&rdquo; command to put these graphs into one ﬁgure. Export a copy of this graph to a graphics format (e.g. pdf, png, etc.) and include a copy with your submission.</p>
+<p>Explain the diﬀerence in what the variation in these two scatter plots represents. In particular, what does it mean for a school to be above or below the mean of the x-variable in each plot?</p>
+<p>Do you think that you would be justiﬁed in applying the CIA to the regression that includes both &ldquo;exppp&rdquo; and &ldquo;lunch&rdquo;? In other words, can you call the estimated coeﬃcient the causal eﬀect of spending another dollar on test scores? If not, list two potential omitted variables and sign the bias of each. If you think you would be justiﬁed, list two potential omitted variables and argue why the bias would be zero.</p>
 <pre><code>. 
 .         reg read4 lunch, robust
 
@@ -429,7 +516,25 @@ exppp_resids |    .002063   .0003309     6.23   0.000     .0014141     .002712
 . 
 </code></pre>
 <h3><a href="#signing-the-bias" id="signing-the-bias">Signing the Bias</a></h3>
+<p>For each of these regressions, select an additional variable that you believe would need to be included in a multi-variate regression in order to estimate a causal parameter. Describe what you expect the sign of the omitted variable bias to be (positive, negative, or zero). Show your work, i.e. spell out the full argument for your answer.</p>
+<p>A bivariate regression of birthweight on mother’s daily smoking.</p>
+<p>A bivariate regression of patient’s subjective health on health insurance coverage.</p>
+<p>A bivariate regression of age at which a young woman becomes sexually active on whether she eats breakfast in the morning.</p>
 <h3><a href="#matching" id="matching">Matching</a></h3>
+<p>For this section, use the &ldquo;matching ps5.dta&rdquo; data available on D2L.</p>
+<p>These data have been constructed to satisfy the CIA. Treatment is not randomly assigned unconditionally, but treatment is randomly assigned conditional on gender. These data have been simulated, and thus they include both potential outcomes.</p>
+<p>What is the true ATE for women?</p>
+<p>What is the true ATE for men?</p>
+<p>What is the overall ATE for the sample?</p>
+<p>What fraction of each gender received the treatment?</p>
+<p>Does this assignment mechanism create selection bias? How do you know?</p>
+<p>HINT: You may want to use an additional command to calculate this.</p>
+<p>Run a regression of &ldquo;yobs&rdquo; on &ldquo;treated&rdquo;. Does this regression identify a causal eﬀect? Why or why not?</p>
+<p>Run the same regression separately on the male and female subsamples. Do these regressions have a causal interpretation?</p>
+<p>Run an interaction model to get the results of these two regressions in a single regression. Interpret each of the coeﬃcients. Explain how you could use the results of this regression to estimate both the ATE and the TOT. You may ignore the question of how you would properly calculate standard errors on these treatment eﬀects.</p>
+<p>Now run a regression of “yobs” on “treated” and “female”. Does this regression have a causal interpretation? If so, which kind of treatment eﬀect? Defend your answer, paying attention to all of the necessary assumptions that we discussed in class.</p>
+<p>Now use the “psmatch2” command to use matching to identify the various treatment eﬀects. Begin by using radius matching with a caliper of 0.5. Include the option to calculate both the ATE and the ATT/TOT. Does this matching mechanism lead to the results you expected? Explain why or why not?</p>
+<p>Re-run the matching estimator using a smaller bandwith (e.g. 0.1). Explain how this smaller bandwidth allows you to get more reasonable results.</p>
 <pre><code>. 
 .         use &quot;${datapath}matching_ps5.dta&quot;, clear
 
@@ -468,14 +573,14 @@ Mean estimation                   Number of obs   =      5,000
 
 .         bysort female: sum treated
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 0
 
     Variable |        Obs        Mean    Std. Dev.       Min        Max
 -------------+---------------------------------------------------------
      treated |      2,445    .7443763    .4363005          0          1
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 1
 
     Variable |        Obs        Mean    Std. Dev.       Min        Max
@@ -490,7 +595,7 @@ Mean estimation                   Number of obs   =      5,000
 
 .         bysort female: sum y0 y1
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 0
 
     Variable |        Obs        Mean    Std. Dev.       Min        Max
@@ -498,7 +603,7 @@ Mean estimation                   Number of obs   =      5,000
           y0 |      2,445    10.02004     1.98157   3.185875   18.62902
           y1 |      2,445    20.02004     1.98157   13.18587   28.62902
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 1
 
     Variable |        Obs        Mean    Std. Dev.       Min        Max
@@ -509,7 +614,7 @@ Mean estimation                   Number of obs   =      5,000
 
 .         bysort female: compare yobs y1
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 0
 
                                         ---------- difference ----------
@@ -522,7 +627,7 @@ jointly defined              2445           -10    -2.556237           0
                        ----------
 total                        2445
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 1
 
                                         ---------- difference ----------
@@ -559,7 +664,7 @@ Linear regression                               Number of obs     =      5,000
 <pre><code>. 
 .         bysort female: reg yobs treated, robust
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 0
 
 Linear regression                               Number of obs     =      2,445
@@ -576,7 +681,7 @@ Linear regression                               Number of obs     =      2,445
        _cons |   10.01871   .0782983   127.96   0.000     9.865173    10.17225
 ------------------------------------------------------------------------------
 
------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
 -&gt; female = 1
 
 Linear regression                               Number of obs     =      2,555
@@ -657,9 +762,9 @@ Log likelihood =  -2860.933                     Pseudo R2         =     0.1745
         Variable     Sample |    Treated     Controls   Difference         S.E.   T-stat
 ----------------------------+-----------------------------------------------------------
             yobs  Unmatched | 15.9776929   2.49011711   13.4875758   .168796854    79.90
-                        ATT | 15.9776929   3.70040209   12.2772908   4.13574198     2.97
-                        ATU | 2.49011711   8.98196226   6.49184516            .        .
-                        ATE |                            9.3741542            .        .
+                        ATT | 15.9776929   10.0223913   5.95530166   8.03580089     0.74
+                        ATU | 2.49011711   9.68352807   7.19341097            .        .
+                        ATE |                           6.57658491            .        .
 ----------------------------+-----------------------------------------------------------
 Note: S.E. does not take into account that the propensity score is estimated.
 
@@ -674,7 +779,7 @@ assignment | On suppor |     Total
      Total |     5,000 |     5,000 
 
 .         disp in red &quot;ATE: &quot; r(ate) &quot;, ATT: &quot; r(att)
-ATE: 9.3741542, ATT: 12.277291
+ATE: 6.5765849, ATT: 5.9553017
 
 . 
 </code></pre>
@@ -696,9 +801,9 @@ Log likelihood =  -2860.933                     Pseudo R2         =     0.1745
         Variable     Sample |    Treated     Controls   Difference         S.E.   T-stat
 ----------------------------+-----------------------------------------------------------
             yobs  Unmatched | 15.9776929   2.49011711   13.4875758   .168796854    79.90
-                        ATT | 15.9776929   3.70040209   12.2772908   4.13574198     2.97
-                        ATU | 2.49011711   8.98196226   6.49184516            .        .
-                        ATE |                            9.3741542            .        .
+                        ATT | 15.9776929   10.0223913   5.95530166   8.03580089     0.74
+                        ATU | 2.49011711   9.68352807   7.19341097            .        .
+                        ATE |                           6.57658491            .        .
 ----------------------------+-----------------------------------------------------------
 Note: S.E. does not take into account that the propensity score is estimated.
 
@@ -713,7 +818,7 @@ assignment | On suppor |     Total
      Total |     5,000 |     5,000 
 
 .         disp &quot;ATE: &quot; r(ate) &quot;, ATT: &quot; r(att)
-ATE: 9.3741542, ATT: 12.277291
+ATE: 6.5765849, ATT: 5.9553017
 
 . 
 </code></pre>

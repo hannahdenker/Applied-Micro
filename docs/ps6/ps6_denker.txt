@@ -11,11 +11,14 @@
 *	UPDATED:  		
 *	TEAMMATES:	Michelle Doughty	
 *	CALLS UPON:	
-*	PRODUCES:	Figures: 	No 
+*	PRODUCES:	Figures: 	Yes 
 *				Datasets:	Yes	
 *				Tables:		No	
 *
 *	CONTENTS:	0. Set pathways, log, globals
+*				1. Open data and Prepare for Analysis
+*				2. Preliminary Analysis
+*				3. Main Analysis
 *
 *
 **************************************************************************
@@ -59,6 +62,15 @@ Collaborators: Michelle Doughty
 Date: <<dd_display: c(current_date)>>  
 
 <nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+
+<<dd_remove>>
+*******************************
+*
+*	1. Open data and Prepare for Analysis
+*
+*******************************
+<</dd_remove>>
 
 ## Open data and Prepare for Analysis
 
@@ -180,6 +192,14 @@ Create the linear spline as described in the paper. Note that it is always zero 
 <</dd_do>>
 ~~~~
 
+<<dd_remove>>
+*******************************
+*
+*	2. Preliminary Analysis
+*
+*******************************
+<</dd_remove>>
+
 ## Preliminary Analysis
 
 Using the "tabstat" command, approximate the first 5 lines of Table 1. Note that this table is calculated using only observations prior to January, 1999.
@@ -233,6 +253,13 @@ Now run difference-in-difference regressions on the entire sample using each of 
 **What do you see in these regressions? Do the results support the equal trends assumption without conditioning on any controls? Why or why not?**
 From this set of regression outputs, we see that the coefficients on each of the interaction terms is statistically significant, suggesting that we can reject the null hypotheses that there is no difference in each of the home characteristics by treatment group across the time period. Because of this we can assume that different types of houses are being sold in the pre- and post-periods in the two counties. Since we might think that characteristics of homes would be associated with both the price the house sold for *and* the treatment-X-time groups we would want to include each of these covariates in a set of controls for subsequent analyses. 
 
+<<dd_remove>>
+*******************************
+*
+*	3. Main Analysis
+*
+*******************************
+<</dd_remove>>
 
 ## Main Analysis
 ### Table 2 Results Extended  

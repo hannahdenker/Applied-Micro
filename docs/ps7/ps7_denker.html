@@ -1,0 +1,567 @@
+<head>
+  <link rel="stylesheet" type="text/css" href="stmarkdown.css">
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_CHTML">
+</script>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    htmlTableOfContents();
+} );                        
+
+function htmlTableOfContents( documentRef ) {
+    var documentRef = documentRef || document;
+    var toc = documentRef.getElementById("toc");
+//  Use headings inside <article> only:
+//  var headings = [].slice.call(documentRef.body.querySelectorAll('article h1, article h2, article h3, article h4, article h5, article h6'));
+    var headings = [].slice.call(documentRef.body.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    headings.forEach(function (heading, index) {
+        var ref = "toc" + index;
+        if ( heading.hasAttribute( "id" ) ) 
+            ref = heading.getAttribute( "id" );
+        else
+            heading.setAttribute( "id", ref );
+
+        var link = documentRef.createElement( "a" );
+        link.setAttribute( "href", "#"+ ref );
+        link.textContent = heading.textContent;
+
+        var div = documentRef.createElement( "div" );
+        div.setAttribute( "class", heading.tagName.toLowerCase() );
+        div.appendChild( link );
+        toc.appendChild( div );
+    });
+}
+
+
+try {
+    module.exports = htmlTableOfContents;
+} catch (e) {
+    // module.exports is not defined
+}
+</script>
+</head>
+<h1><a href="#problem-set-7" id="problem-set-7">Problem Set 7</a></h1>
+<p>Course: ECON 8848<br />
+Author: Hannah Denker<br />
+Collaborators: Michelle Doughty Date:  7 Apr 2021</p>
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+<h2><a href="#open-data-and-prepare-for-analysis" id="open-data-and-prepare-for-analysis">Open data and Prepare for analysis</a></h2>
+<pre><code>. use &quot;${datapath}psidextract.dta&quot;, clear 
+
+</code></pre>
+<h2><a href="#sample-selection-and-reshaping" id="sample-selection-and-reshaping">Sample Selection and Reshaping</a></h2>
+<p><strong>How are the data stored, long or wide? Which years do you have in your sample?</strong></p>
+<pre><code>. qui describe    
+
+</code></pre>
+<p>Answer: The data in this sample are wide. We can tell because the variables all have year suffixes in the variable names. We have 1997, 1999, and 2001 in this sample.</p>
+<p>Limit your sample to individuals who are between the ages of 18 and 55 in 1997.</p>
+<pre><code>. drop if age1997&lt;18      
+(3 observations deleted)
+
+. drop if age1997&gt;55              
+(19,825 observations deleted)
+
+</code></pre>
+<p>Get the data into &ldquo;long&rdquo; format using the reshape command. Note that the education variable is measured only once, and therefore does not need to be reshaped.</p>
+<pre><code>. qui reshape long age marst work union salary wage tenure weight heightft heightin , i(id) ///
+&gt;         j(year) 
+
+</code></pre>
+<h2><a href="#cleaning-and-recoding" id="cleaning-and-recoding">Cleaning and Recoding</a></h2>
+<p>A value of 1 in the &ldquo;marst&rdquo; variable means that the observation is married. Create a &ldquo;married&rdquo; dummy that is 1 if the person is married and 0 otherwise.</p>
+<pre><code>. cap drop married        
+
+. generate married= .     
+(15,861 missing values generated)
+
+. replace  married= 1 if marst==1 
+(8,241 real changes made)
+
+. replace  married= 0 if marst!=1 &amp; marst!=.      
+(6,196 real changes made)
+
+. lab var  married &quot;Marriage Dummy: 1=Married, 0=Not Married&quot;     
+
+. *tab married marst, missing
+</code></pre>
+<p>Workers in the sample are either paid by the hour or they are salaried. We need a new variable that measures hourly wages in a consistent way for all of our observations. <em>Follow the list of steps below to do so:</em></p>
+<ul>
+<li> Start by creating a variable that is missing for everyone called "hourwage" </li> 
+<li> Replace it with the value of "wage" if that "wage" variable is a valid hourly wage (>1 and <100). </li> 
+<li> Replace it with the hourly version of the person's annual salary as long as the "salary" variable implies an hourly wage between one dollar and 100 dollars. </li> 
+<li> Create a logwage variable that is the natural log of the "hourwage" variable you created. </li> 
+</ul>
+<p><em>Other cleaning steps:</em></p>
+<ul>
+<li> Fix the coding on education. "99" means missing. </li> 
+<li> Fix the coding on the union variable. In the current coding scheme 0, 8 and 9 mean missing, 1 means yes, and 5 means no. Create a normal 0/1 dummy variable where 1 means yes and 0 means no. Code the missing values correctly. </li> 
+<li> Fix the coding on tenure. Valid responses begin at 1 and are measured in years of work experience. Other values (incl. 0, 98 and 99) indicate non-valid responses. </li> 
+<li> The person's height is coded in two variables, one measuring the feet component, and the other measuring the inches piece. Create a new variable called "heightinches" that is the person's total height in inches. Recode any resulting values above seven feet tall as missing. </li> 
+<li> Codes for weight above 900 pounds indicate missing. Recode these as appropriate. </li> 
+<li> Drop any observations that have missing values for any of the following variables: logwage, married, education, age, union, and tenure. NOTE: Do not skip this step. If you do, you will have trouble with the rest of the problem set, given how STATA treats missing values. </li> 
+</ul>
+<pre><code>. ***Create hourwage var  
+. cap drop hourwage       
+
+. generate hourwage= .    
+(15,861 missing values generated)
+
+. replace  hourwage= wage if wage&gt;1 &amp; wage&lt;100    
+(5,975 real changes made)
+
+. replace  hourwage= salary/2000 if inrange(salary, 2000, 200000)         
+(3,868 real changes made)
+
+. lab var  hourwage &quot;Hourly version of the person's annual salary&quot;        
+
+. 
+. ***Create Logwage variable      
+. cap drop logwage        
+
+. generate logwage= .     
+(15,861 missing values generated)
+
+. replace  logwage= log(hourwage)         
+(9,843 real changes made)
+
+. lab var  logwage &quot;Natural Log of Hour Wage var.&quot;        
+
+. 
+. ***Edit Education var missings          
+. replace education=. if education==99            
+(522 real changes made, 522 to missing)
+
+. *tab education, mi      
+. 
+. ***Edit Union variable  
+. replace union = . if union == 0 | union == 8 | union == 9               
+(3,401 real changes made, 3,401 to missing)
+
+. replace union = 0 if union == 5         
+(8,784 real changes made)
+
+. replace union = 1 if union == 1 
+(0 real changes made)
+
+. lab var union &quot;Union Dummy: 1=In Union, 0=Not in Union&quot;         
+
+. 
+. ***Fix coding on &quot;tenure&quot; var   
+. replace tenure=. if tenure==0 | tenure==98 | tenure==99         
+(4,931 real changes made, 4,931 to missing)
+
+. 
+. ***Create new height var where height is measured in inches     
+. cap drop heightinches   
+
+. generate heightinches= heightft*12 + heightin   
+(6,930 missing values generated)
+
+. replace  heightinches= . if heightinches &gt; 7*12         
+(71 real changes made, 71 to missing)
+
+. drop heightft heightin  
+
+. 
+. ***Fix weight variable  
+. replace weight= . if weight&gt;900         
+(113 real changes made, 113 to missing)
+
+. 
+. ***Drop obs that have missing values for covariates     
+. drop if missing(logwage) | missing(married) | missing(education) | missing(age) | missing(union
+&gt; ) | missing(tenure)      
+(9,069 observations deleted)
+
+. 
+</code></pre>
+<p>Finally, xtset the data, using a delta of 2 so that l.var means the measure from the previous wave, not from the previous year (which would always be missing).</p>
+<pre><code>. xtset id year , delta(2)                
+       panel variable:  id (unbalanced)
+        time variable:  year, 1997 to 2001, but with gaps
+                delta:  2 units
+
+</code></pre>
+<h2><a href="#pooled-ols-regressions" id="pooled-ols-regressions">Pooled OLS Regressions</a></h2>
+<p>For each of these regressions, use all available years and just ignore the panel component. If you know what clustering is, and you would like to use it to account for the non-independence of observations at the person-level, you are welcome to.</p>
+<p>Run a regression of logwage on the married dummy. Include dummies for two of the three waves as controls.</p>
+<pre><code>. reg logwage married i.year, vce(cluster id)     
+
+Linear regression                               Number of obs     =      6,792
+                                                F(3, 3078)        =     127.67
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0632
+                                                Root MSE          =     .69598
+
+                                 (Std. Err. adjusted for 3,079 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .3358982   .0222614    15.09   0.000     .2922495    .3795468
+             |
+        year |
+       1999  |   .0843869   .0148433     5.69   0.000      .055283    .1134907
+       2001  |   .1975583   .0163144    12.11   0.000     .1655701    .2295465
+             |
+       _cons |   2.331148   .0182732   127.57   0.000      2.29532    2.366977
+------------------------------------------------------------------------------
+
+. dis (exp(_b[married]))-1 // interpreting coefficient since dummy        
+.39919652
+
+</code></pre>
+<p><strong>You did not adjust the wage variables for inflation. Is this a problem? Why or why not?</strong>      		 Answer: We do not need to adjust for inflation since we are controlling for year in our regression.</p>
+<p><strong>Interpret the Results.</strong><br />
+Answer: Since we are interpreting the changes in a logged dependent variable using a binary independent variable, we want to exponentiate the coefficient - exp(.3358982)-1.  We see that on average across the years in our sample, married people have about a 40% higher hourly wage relative to unmarried peers. We can reject the null hypothesis that we would observe a value this large or larger by chance at p &lt; 0.001. Additionally, we see that the average log wage for unmarried people is about 2.43 (or about $ 11.30 per hour).</p>
+<p>Add education, age, union status, and tenure to the regression.</p>
+<pre><code>. reg logwage married education age union tenure i.year, vce(cluster id)          
+
+Linear regression                               Number of obs     =      6,792
+                                                F(7, 3078)        =     162.28
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.2123
+                                                Root MSE          =      .6384
+
+                                 (Std. Err. adjusted for 3,079 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .2579181   .0203463    12.68   0.000     .2180243    .2978118
+   education |   .1011227   .0045503    22.22   0.000     .0922009    .1100446
+         age |   .0056067    .001306     4.29   0.000      .003046    .0081674
+       union |    .072575   .0222525     3.26   0.001     .0289438    .1162063
+      tenure |   .0089555   .0014464     6.19   0.000     .0061194    .0117916
+             |
+        year |
+       1999  |   .0694025   .0143514     4.84   0.000     .0412631    .0975418
+       2001  |   .1666788    .016386    10.17   0.000     .1345501    .1988075
+             |
+       _cons |   .7181888   .0732614     9.80   0.000     .5745426     .861835
+------------------------------------------------------------------------------
+
+. dis (exp(_b[married]))-1 // interpreting coefficient since dummy        
+.29423276
+
+</code></pre>
+<p><strong>How do the results change?</strong><br />
+Answer: The magnitude of the coefficient of interest decreased after adding this set of covariates. We see that on average across the years in our sample, married people have about a 29% higher hourly wage relative to unmarried peers while controlling for education, age, union statust, and tenure. We can reject the null hypothesis that we would observe a value this large or larger by chance at p &lt; 0.001. It does not make much practical sense to interpret the constant after adding this set of controls.</p>
+<p>Now add the heightinches and weight variables as additional controls.</p>
+<pre><code>. reg logwage married education age union tenure heightinches weight i.year, vce(cluster id)     
+&gt;  
+
+Linear regression                               Number of obs     =      4,467
+                                                F(8, 2766)        =     110.07
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.2093
+                                                Root MSE          =     .64848
+
+                                 (Std. Err. adjusted for 2,767 clusters in id)
+------------------------------------------------------------------------------
+             |               Robust
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .2135582   .0249857     8.55   0.000     .1645657    .2625507
+   education |   .0992691   .0051865    19.14   0.000     .0890993    .1094389
+         age |     .00497   .0014872     3.34   0.001     .0020539    .0078862
+       union |   .0509639   .0248201     2.05   0.040     .0022962    .0996316
+      tenure |   .0081644   .0015549     5.25   0.000     .0051156    .0112132
+heightinches |   .0226949   .0036872     6.16   0.000      .015465    .0299249
+      weight |  -.0009733   .0003435    -2.83   0.005    -.0016468   -.0002998
+             |
+        year |
+       2001  |   .1059247   .0155106     6.83   0.000     .0755112    .1363382
+             |
+       _cons |  -.5143149   .2396747    -2.15   0.032    -.9842742   -.0443556
+------------------------------------------------------------------------------
+
+. dis (exp(_b[married]))-1 // interpreting coefficient since dummy        
+.23807556
+
+</code></pre>
+<p><strong>What happened with your regression? Why? Hint: Look at your number of observations.</strong>     		 Answer: The sample size used in this analysis decreased by about 2,300 observations (from 6,792 to 4,467). This is probably because we did not drop observations with missingness in these two new controls like we did with the other control variables in our analysis. Additionally, we also see a that the coefficient on the variable of interest (married) decreased in magnitude again (by about 5 percentage points).</p>
+<p><strong>Why might omitting these last two variables cause the CIA for this regression model to fail. Be specific.</strong>        	 Answer: We might hypothesize that tall/muscular men are found to be more desired for marriage and more attractive to employers. Therefore, physical size would be correlated with both marriage and wages and leaving out these characteristics would bias our results.</p>
+<h2><a href="#fe-regressions" id="fe-regressions">FE Regressions</a></h2>
+<h3><a href="#using-xtreg" id="using-xtreg">Using &ldquo;xtreg&rdquo;</a></h3>
+<p>Run a FE regression of logwage on the married dummy. Include dummy variables for two of the three waves of the survey.</p>
+<pre><code>. xtreg logwage married i.year,  fe       
+
+Fixed-effects (within) regression               Number of obs     =      6,792
+Group variable: id                              Number of groups  =      3,079
+
+R-sq:                                           Obs per group:
+     within  = 0.0643                                         min =          1
+     between = 0.0066                                         avg =        2.2
+     overall = 0.0204                                         max =          3
+
+                                                F(3,3710)         =      85.02
+corr(u_i, Xb)  = 0.0140                         Prob &gt; F          =     0.0000
+
+------------------------------------------------------------------------------
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .0277871   .0382863     0.73   0.468    -.0472772    .1028513
+             |
+        year |
+       1999  |   .0996976   .0140675     7.09   0.000     .0721169    .1272783
+       2001  |   .2271731   .0143093    15.88   0.000     .1991183     .255228
+             |
+       _cons |   2.511466    .025907    96.94   0.000     2.460672    2.562259
+-------------+----------------------------------------------------------------
+     sigma_u |  .66581263
+     sigma_e |  .43009605
+         rho |  .70557722   (fraction of variance due to u_i)
+------------------------------------------------------------------------------
+F test that all u_i=0: F(3078, 3710) = 4.57                  Prob &gt; F = 0.0000
+
+. dis (exp(_b[married]))-1 // interpreting coefficient since dummy        
+.02817672
+
+</code></pre>
+<p><strong>Suppose that you tried to interpret this regression as the causal effect of marriage on earnings. What have you assumed? How is this similar to and different from the assumption you would need to interpret the married coefficient as causal in the last cross-sectional regression you ran?</strong><br />
+Answer: If we interpret this regression as the causal effect of marriage on earnings, we have to assume that the variation in the differences-in-means, or in the &ldquo;within&rdquo; year estimator, is as-good-as-random. This is different from the assumption in the cross-sectional regression in that we assume that conditional on the set of chosen covariates, our treatment status is independent of both potential outcomes. In other words, we assume that after we have controlled for a group of observed characteristics, treatment status is uncorrelated with the two potential outcomes.</p>
+<p>Try to add controls for education, age, union status, and tenure.</p>
+<pre><code>. xtreg logwage married i.year education age union tenure,  fe    
+note: education omitted because of collinearity
+
+Fixed-effects (within) regression               Number of obs     =      6,792
+Group variable: id                              Number of groups  =      3,079
+
+R-sq:                                           Obs per group:
+     within  = 0.0647                                         min =          1
+     between = 0.0108                                         avg =        2.2
+     overall = 0.0000                                         max =          3
+
+                                                F(6,3707)         =      42.75
+corr(u_i, Xb)  = -0.1947                        Prob &gt; F          =     0.0000
+
+------------------------------------------------------------------------------
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .0269467   .0383081     0.70   0.482    -.0481602    .1020537
+             |
+        year |
+       1999  |   .1209596   .0508788     2.38   0.017     .0212065    .2207128
+       2001  |   .2691304   .1003296     2.68   0.007     .0724238     .465837
+             |
+   education |          0  (omitted)
+         age |  -.0107732   .0239797    -0.45   0.653     -.057788    .0362415
+       union |   .0409652   .0376093     1.09   0.276    -.0327717    .1147021
+      tenure |   .0007606   .0022581     0.34   0.736    -.0036666    .0051878
+       _cons |   2.908863   .9207653     3.16   0.002     1.103607     4.71412
+-------------+----------------------------------------------------------------
+     sigma_u |  .68731611
+     sigma_e |  .43018145
+         rho |  .71852856   (fraction of variance due to u_i)
+------------------------------------------------------------------------------
+F test that all u_i=0: F(3078, 3707) = 4.37                  Prob &gt; F = 0.0000
+
+. dis (exp(_b[married]))-1 // interpreting coefficient since Dummy        
+.02731308
+
+</code></pre>
+<p><strong>Which variable(s) did STATA drop? Explain why this makes sense.</strong><br />
+Answer: Stata dropped the &ldquo;education&rdquo; variable. This makes sense given that we would not expect variation within an individual&rsquo;s education after they start working.</p>
+<p><strong>Is there a variable you expected to have dropped that was not? If so, which one? Explore the coding of any variables to see why they were not mechanically removed from the regression specification.</strong><br />
+Answer: I think I was a little bit surprised that &ldquo;union&rdquo; was not dropped because I would have thought that there would not be much variation in an individual&rsquo;s union status over the course of 5 years, but I can see that within an individual over this time they are either joining or leaving a union, which might happen because of changes in their employer.</p>
+<pre><code>There is also one person who ages non-linearly? This person was 23 in 1997, 25 in 1999, and 38 (!) in 2001. So if we expected the &quot;age&quot; variable to drop out because it was a constant increase across all person-years, this person messed that up. Therefore, we still have a non-zero age coefficient. 
+</code></pre>
+<pre><code>. ***Look at variation in 
+. sort id year 
+
+. list id year education union in 1/10
+
+     +------------------------------+
+     | id   year   educat~n   union |
+     |------------------------------|
+  1. | 16   1997         10       1 |
+  2. | 16   2001         10       0 |
+  3. | 22   1997         12       1 |
+  4. | 22   1999         12       1 |
+  5. | 27   1997         12       1 |
+     |------------------------------|
+  6. | 33   1997         12       0 |
+  7. | 33   1999         12       0 |
+  8. | 33   2001         12       0 |
+  9. | 35   1997         10       0 |
+ 10. | 51   1997          9       0 |
+     +------------------------------+
+
+. /*
+&gt;         graph twoway (scatter tenure education if year==1997, mcolor(erose)) ///
+&gt;                                  (scatter tenure education if year==1999, mcolor(emidblue)) ///
+&gt;                                  (scatter tenure education if year==2001, mcolor(eltgreen)) ///
+&gt;                                  , ///
+&gt;                                  legend(rows(1) label(1 &quot;1997&quot;) label(2 &quot;1999&quot;) label(3 &quot;2001&quot;)
+&gt; ) ///
+&gt;                                  name(tenureXedu, replace)
+&gt; 
+&gt;         graph twoway (scatter age education if year==1997, mcolor(erose)) ///
+&gt;                                  (scatter age education if year==1999, mcolor(emidblue)) ///
+&gt;                                  (scatter age education if year==2001, mcolor(eltgreen)) ///
+&gt;                                  , ///
+&gt;                                  legend(rows(1) label(1 &quot;1997&quot;) label(2 &quot;1999&quot;) label(3 &quot;2001&quot;)
+&gt; ) ///
+&gt;                                  name(ageXedu, replace) 
+&gt; */                                               
+</code></pre>
+<p><strong>What happened to the coefficient on the married dummy when you moved from OLS to FE? Explain possible ways to interpret this change.</strong>      		 Answer: The coefficient on marriage decreased substantially from OLS to FE. This happened because we are now comparing wages between two groups (married and unmarried men) to comparing wages within a person before and then after they get married. We see that in the FE regression, the coefficient on &ldquo;married&rdquo; is not statisically different from zero which suggests that there is not a causal relationship between being married and wages.</p>
+<p><strong>What happened to the standard errors? Explain why this happened.</strong>    		 Answer: The standard error on the marriage coefficient increases by about 0.01. This is because we are adding a lot more parameters to estimate by adding the person-level fixed effects, which don&rsquo;t explain a lot of the remaining $\epsilon_i$ but are explaining a lot of the variation in wages.</p>
+<h3><a href="#using-dummy-variables-for-each-alpha-i" id="using-dummy-variables-for-each-alpha-i">Using Dummy Variables for each $\alpha_i$</a></h3>
+<p>Try to run your last regression by manually including a dummy variable for each value of ID. You may choose whether to omit one dummy or to omit a constant term, but you must do one or the other. NOTE: You can omit this actual regression from your do-file when you create your log.</p>
+<pre><code>. *reg logwage married education age union tenure i.id i.year, noconstant
+</code></pre>
+<p><strong>What happens? Explain how STATA can run the &ldquo;xtreg&rdquo; regressions without encountering the same problem.</strong><br />
+Answer: I get an error that says that I have attempted to create a matrix that is too big, and I need to tell Stata to increase the allowed matrix size. The &ldquo;xtreg&rdquo; command with the fixed effects option allows us to use OLS to demean each $X_i$ and each $Y_i$ within each individual before running the regression. The coefficient we see on the &ldquo;married&rdquo; variable is the weighted average of these within-group demeaned regressions.</p>
+<h3><a href="#de-meaning" id="de-meaning">De-meaning</a></h3>
+<p>Run your last regression by first manually creating new variables representing a &ldquo;deviation-in-means&rdquo; for the dependent variable and each of the controls. Then run OLS on the &ldquo;de-meaned&rdquo; data. Feel free to omit the constant term since it will be zero if you include it, by construction.</p>
+<pre><code>. foreach var of varlist logwage married education age union tenure year {
+  2. cap drop `var'_m
+  3. cap drop `var'_dm
+  4. 
+. egen `var'_m= mean(`var'), by(id)
+  5. gen `var'_dm= `var'- `var'_m
+  6. cap drop `var'_m
+  7. }
+
+. reg logwage_dm married_dm education_dm age_dm union_dm tenure_dm year_dm, robust noconstant
+note: education_dm omitted because of collinearity
+
+Linear regression                               Number of obs     =      6,792
+                                                F(5, 6787)        =      77.98
+                                                Prob &gt; F          =     0.0000
+                                                R-squared         =     0.0644
+                                                Root MSE          =     .31798
+
+------------------------------------------------------------------------------
+             |               Robust
+  logwage_dm |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+  married_dm |   .0266022   .0359736     0.74   0.460    -.0439174    .0971218
+education_dm |          0  (omitted)
+      age_dm |  -.0090987    .017931    -0.51   0.612    -.0442491    .0260518
+    union_dm |   .0428255   .0327822     1.31   0.191     -.021438     .107089
+   tenure_dm |   .0007787   .0023942     0.33   0.745    -.0039147    .0054721
+     year_dm |   .0655545   .0188751     3.47   0.001     .0285533    .1025556
+------------------------------------------------------------------------------
+
+</code></pre>
+<p><strong>Were you able to replicate the coefficient results from &ldquo;xtreg&rdquo;? What about the standard errors?</strong><br />
+Answer: Yes, the coefficients are the same between the demeaned regression and the xtreg regression, but the standard errors are slightly different in the two models. We would assume that this is because the two models count degrees of freedom differently.</p>
+<h3><a href="#differencing-as-an-alternative" id="differencing-as-an-alternative">Differencing as an Alternative</a></h3>
+<p>Now run a First Differences specification like the last FE regression you ran. Note: you will need to create the differences yourself, taking advantage of the fact that your data are &ldquo;xtset&rdquo;</p>
+<pre><code>. reg d.logwage d.(married education age union tenure year), robust
+note: D.education omitted because of collinearity
+note: D.year omitted because of collinearity
+
+Linear regression                               Number of obs     =      3,457
+                                                F(4, 3452)        =       0.73
+                                                Prob &gt; F          =     0.5709
+                                                R-squared         =     0.0013
+                                                Root MSE          =     .58396
+
+------------------------------------------------------------------------------
+             |               Robust
+   D.logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |
+         D1. |    .054994   .0543117     1.01   0.311    -.0514924    .1614803
+             |
+   education |
+         D1. |          0  (omitted)
+             |
+         age |
+         D1. |  -.0149626   .0256221    -0.58   0.559    -.0651986    .0352734
+             |
+       union |
+         D1. |   .0586619   .0440721     1.33   0.183    -.0277481    .1450719
+             |
+      tenure |
+         D1. |  -.0014728   .0035626    -0.41   0.679    -.0084578    .0055121
+             |
+        year |
+         D1. |          0  (omitted)
+             |
+       _cons |   .1484836   .0535114     2.77   0.006     .0435665    .2534008
+------------------------------------------------------------------------------
+
+</code></pre>
+<p><strong>Ignoring differences in efficiency, which specification do you prefer, FE or FD. Why?</strong><br />
+Answer: I prefer the FE method. If there is an effect of being married on wages, we would expect the effect to be constant in the years after the marriage happened. The FD method only compares the years that we would consider pre- and post-time periods. For example, if a man gets married in 1998, the FD method would compare his wages in 1997 and 1999 without accounting for his 2001 wages. I think it makes more sense to include all periods of data in the estimation and average across the pre- post-periods within each individual (the FE method)</p>
+<p>Now run an FE and an FD regression, but limit the data to 1999 and 2001. IMPORTANT: Your FD regression should only include one difference for each individual. In other words, you should treat the differenced variables in 1999 as missing.</p>
+<pre><code>. ***FE
+. xtreg logwage married i.year education age union tenure if (year == 1999 | year == 2001), fe   
+&gt;  
+note: education omitted because of collinearity
+
+Fixed-effects (within) regression               Number of obs     =      4,533
+Group variable: id                              Number of groups  =      2,793
+
+R-sq:                                           Obs per group:
+     within  = 0.0452                                         min =          1
+     between = 0.0672                                         avg =        1.6
+     overall = 0.0575                                         max =          2
+
+                                                F(5,1735)         =      16.42
+corr(u_i, Xb)  = 0.1323                         Prob &gt; F          =     0.0000
+
+------------------------------------------------------------------------------
+     logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |   .0874457   .0655768     1.33   0.183    -.0411722    .2160635
+             |
+        year |
+       2001  |   .1180153   .0682125     1.73   0.084    -.0157722    .2518027
+             |
+   education |          0  (omitted)
+         age |   .0036752   .0315968     0.12   0.907    -.0582966     .065647
+       union |   .0164926   .0562473     0.29   0.769     -.093827    .1268122
+      tenure |   .0012308   .0034527     0.36   0.722    -.0055411    .0080028
+       _cons |   2.402445   1.277653     1.88   0.060    -.1034576    4.908348
+-------------+----------------------------------------------------------------
+     sigma_u |  .68633579
+     sigma_e |  .42211987
+         rho |  .72554889   (fraction of variance due to u_i)
+------------------------------------------------------------------------------
+F test that all u_i=0: F(2792, 1735) = 3.79                  Prob &gt; F = 0.0000
+
+. ***FD
+. reg   d.logwage d.(married education age union tenure) if year == 2001, robust 
+note: D.education omitted because of collinearity
+
+Linear regression                               Number of obs     =      1,740
+                                                F(4, 1735)        =       0.66
+                                                Prob &gt; F          =     0.6229
+                                                R-squared         =     0.0012
+                                                Root MSE          =     .59697
+
+------------------------------------------------------------------------------
+             |               Robust
+   D.logwage |      Coef.   Std. Err.      t    P&gt;|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+     married |
+         D1. |   .0874457   .0611663     1.43   0.153    -.0325218    .2074131
+             |
+   education |
+         D1. |          0  (omitted)
+             |
+         age |
+         D1. |   .0036752   .0311782     0.12   0.906    -.0574757    .0648261
+             |
+       union |
+         D1. |   .0164926   .0654032     0.25   0.801    -.1117848      .14477
+             |
+      tenure |
+         D1. |   .0012308   .0049253     0.25   0.803    -.0084293     .010891
+             |
+       _cons |   .1180153   .0664049     1.78   0.076    -.0122267    .2482573
+------------------------------------------------------------------------------
+
+</code></pre>
+<p><strong>Do you get the same results in both models? If not, why not?</strong><br />
+Answer: Yes, we get the same results in both specifications because we are including only two time periods. First differences and fixed effects (using xtreg) are essentially doing the same thing with this &ldquo;pre&rdquo; and &ldquo;post&rdquo; set-up. But, the year value dummy becomes the constant in the FD model.</p>
