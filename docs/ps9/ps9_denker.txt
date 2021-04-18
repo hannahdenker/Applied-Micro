@@ -1,0 +1,340 @@
+<<dd_remove>>
+
+*Anything in between the dd_remove bits will be a comment that won't show
+*up in the Markdown document
+**************************************************************************
+*
+*   PROGRAM: 	PSET 9
+*   AUTHOR: 	Hannah Denker 
+*	PURPOSE: 	Documenting work for PSET 9
+*	CREATED: 	04/16/21
+*	UPDATED:  		
+*	TEAMMATES:	Michelle Doughty	
+*	CALLS UPON:	
+*	PRODUCES:	Figures: 	No 
+*				Datasets:	No	
+*				Tables:		No	
+*
+*	CONTENTS:	0. Set pathways, log, globals
+*				1. Open data 
+*				2. Reduced Form 
+*				3. First Stage and IV
+*				4. Endogeneity in an RCT
+*				5. Causality
+*				6. IV and LATE - Types
+*				7. LATE
+*
+*
+**************************************************************************
+<</dd_remove>>
+
+<<dd_remove>>
+~~~
+<<dd_do>>	
+clear all
+set more off
+pause on
+*set memory 500m, perm // ignored in Stata. See Stata result window. 
+
+***Set cd for header.txt file to run & opens the folder in Git for this
+***PSET
+cd "/Users/hannahdenker/Documents/GitHub/Applied-Micro/docs/ps9/"
+
+* dyndoc "ps9_denker.txt", replace
+
+glob projectpath	"/Users/hannahdenker/Google Drive/Coursework/Yr4: Spring 2021/MicroEcon/"
+glob datapath 		"${projectpath}5. Datasets/"
+glob gendatapath 	"${projectpath}7. Generated Datasets/"
+
+<</dd_do>>
+~~~
+<</dd_remove>>
+
+<<dd_remove>>
+*******************************
+*
+*	0. Markdown Settings
+*
+*******************************
+<</dd_remove>>
+<<dd_version: 1>>
+<<dd_include: header.txt>>
+
+
+# Problem Set 9
+Course: ECON 8848  
+Author: Hannah Denker  
+Collaborators: Michelle Doughty 
+Date: <<dd_display: c(current_date)>>  
+
+<nav id="toc"><strong><font size="5">Table of Contents</font></strong></nav>
+
+
+<<dd_remove>>
+*******************************
+*
+*	1. Open data
+*
+*******************************
+<</dd_remove>>
+
+## Open data 
+
+~~~
+<<dd_do>>	
+use "${datapath}card.dta", clear	
+<</dd_do>>
+~~~	
+
+<<dd_remove>>
+*******************************
+*
+*	2. OLS and Reduced Form
+*
+*******************************
+<</dd_remove>>
+
+## Constant Treatment Effects
+### OLS and Reduced Form
+
+Run an OLS regression of "lwage" on education. Include the following controls: exper, expersq, smsa, black, married, reg661-reg668
+~~~
+<<dd_do>>	
+glob control_set1 "exper expersq smsa black married reg661 reg662 reg663 reg664 reg665 reg666 reg667 reg668"
+cap tab educ, mi
+
+reg lwage educ $control_set1, robust
+<</dd_do>>
+~~~	
+
+**Interpret the coefficient on the "educ" variable. Why might this regression coefficient not have a causal interpretation?**   
+Controlling for our set of observables, we estimate that a person will earn about 7.5% more in wages for each additional year of education they achieve, on average (exp(0.0724)-1). We see that this estimate is statistically significant at the p<0.001 level so we can reject the null hypothesis that we observed this estimate by chance. 
+
+Although we have estimated a statistically significant coefficient, this doesn't mean that we would attribute causality to this estimate. We would need to believe that we had controlled for all possible sources of bias in our set of controls. This seems unlikely as there could be many possible sources of bias that are unobservable and correlated with both educational attainment and wages. For example, we might think that could be some degree of intrinsic motivation that we cannot observe and would be associated with both the amount of education this person receives and their wages. 
+
+**In which direction do you think this coefficient is likely to be biased? Why?**   
+
+I would think that this coefficient is biased upward (it's larger in magnitude than it should be) because we would assume that education and wages would be positively correlated with each other AND unobservable factors, like motivation, would also be positively correlated with both education and wages. We would also see an upwardly biased coefficient if an omitted variable was negatively correlated with both education and wages. 
+
+**Explain the reasoning behind using proximity to a college campus as an instrument for the level of education a person receives.**   
+Using proximity to a college campus as an instrument assumes that there is randomness associated with living near college campuses. We also assume that there is an association between proximity to a college campus and the likelihood of going to college. By including the proximity variable as an instrument for educational attainment, we are leveraging the quasi-random variation in where people live to account for omitted variable bias that might have been present in the multiple regression specification we ran before. 
+
+
+Run the "reduced form" regression based on this IV strategy. 
+~~~
+<<dd_do>>	
+reg lwage nearc4 $control_set1, robust
+<</dd_do>>
+~~~	
+
+**Is there a statistically significant relationship between college proximity and earnings, conditional on the other controls?**   
+Yes, we do see a statistically significant relationship between college proximity and earnings, conditional on the other controls (p<0.05).
+
+**What do we need to assume about this relationship in order for the IV strategy to be valid?**    
+The two assumptions needed for a valid IV strategy include (1) that there is plausibly exogenous variation in college proximity and (2) that college proximity affects earnings ONLY through educational attainment (the exclusion restriction).
+
+**Do you believe that assumption? Why or why not?**  
+I'm not sure that I believe these assumptions hold in this example. It seems very likely that people who live close to college campuses are different in some unobservable ways than those that don't live close to college campuses. For example, we might assume that families who really value higher education chose to live in communities with colleges. We could hypothesize that these families would push their children to be successful through encouraging them to attend college and to join a profession with high wage potential.   
+
+Additionally, we might believe that the K-12 experiences in college communities are better in quality than those that are in other parts of a state, in more rural areas, for example. This would violate the exclusion restriction if we believe that higher quality K-12 education is associated with higher wages and thus, proximity to college campuses affects wages through another avenue outside of the number of years of education a person attains. 
+
+
+Add the variable "libcrd14" to your reduced-form regression. 
+~~~
+<<dd_do>>	
+cap codebook libcrd14 // 1= had library card at 14; 13 missing
+reg lwage nearc4 libcrd14 $control_set1, robust
+<</dd_do>>
+~~~	
+**How might the inclusion of this variable help you meet the required assumption you discussed above?** 
+Adding a variable that controls for youth library card ownership could help us believe that we are controlling for the value families place on education. This could help us believe that we are accounting for a type of "motivation" that might lead some families to live close to college campuses because they place a high value on education and that controlling for this set of variables allows us to isolate quasi-random variation in living near a college (and help us believe the exclusion restriction holds).  
+
+Run a bivariate regression of each of a set of key variables on "nearc4". 
+~~~
+<<dd_do>>	
+foreach var in iq fatheduc motheduc {
+	di in red "Association between nearc4 and `var'"
+	reg nearc4 `var', robust
+} // closes foreach var in iq fatheduc motheduc loop 
+<</dd_do>>
+~~~	
+
+**What do the results of these regressions suggest to you about whether the required assumption for the reduced form is valid, without including covariates? NOTE: We can't include these in our main regressions because they are not measured for enough of our sample.**   
+
+From these results we see that proximity to college is associated with IQ and parents' education. These are the two key variables that have a statistically significant relationship with proximity to college and therefore might suggest that the types of people who live near a college and those that don't are not random.  Thus, we might have a hard time believing that proximity to college is random without controlling for these variables. 
+
+Repeat these three regressions with the same set of controls included above. 
+~~~
+<<dd_do>>	
+foreach var in iq fatheduc motheduc {
+	di in red "Association between nearc4 and `var'"
+	reg nearc4 `var' libcrd14 $control_set1, robust
+} // closes foreach var in iq fatheduc motheduc loop 
+<</dd_do>>
+~~~	
+
+**How does the inclusion of the covariates affect the coefficient on "nearc4"? Does this change affect your willingness to believe the CIA for the reduced form when these variables are included as controls?**    
+After we include our set of covariates, we see that there is no longer a statistically significant relationship between living near a college and parental education nor is there a statistically significant relationship between living near a college and IQ. We can conclude from these results that, conditional on this set of covariates, living near a college campus could be plausibly random and the first assumption needed for our IV holds. 
+
+### The First Stage and IV   
+
+Run the first-stage regression. Remember that it needs to include the same set of controls as the reduced form. 
+~~~
+<<dd_do>>	
+reg educ nearc4 libcrd14 $control_set1, robust
+glob firststage_coef = _b[nearc4]
+test nearc4 = 0 
+<</dd_do>>
+~~~	
+
+**Do you have a weak instruments problem? How do you know?**    
+From what I understand about the literature, we wouldn't be confident that an F-stat of 10.40 indicates we have a strong instrument. This statistic meets the traditional definition of "strong enough", but we would feel more confident in the strength of the instrument if this F-stat was larger. Additionally, we see that the magnitude of the coefficient on the proximity to college variable suggests that we are not explaining a lot of the variation in education after controlling for our covariates (only about 2.5%). 
+**Based on the results from the first-stage and the reduced form, what will the coefficient be when you run IV? How do you know?**   
+To estimate our IV coefficient, we can divide the coefficient from the reduced form (0.035) by the coefficient from the first-stage regression (0.258). 
+~~~
+<<dd_do>>	
+loc iv = round(0.035/0.258,.001)
+di in red "IV coefficient estimate = `iv'"
+<</dd_do>>
+~~~	
+
+Run a 2SLS regression with "educ" as the endogenous variable and "nearc4" as the excluded instrument. 
+~~~
+<<dd_do>>	
+ivregress 2sls lwage (educ=nearc4) libcrd14 $control_set1, vce(robust) 
+<</dd_do>>
+~~~	
+
+**Are these results surprising given the OVB you expected?**    
+Yes, I thought that the coefficient of interest from the IV results would be lower than the OLS results, but we see that the coefficient of interest is actually *higher* in the IV specification. This suggests that the original OVB would be positively correlated with either earnings or education and negatively correlated with the other rather than positively (or negatively) correlated with both. Although, this estimated coefficient does make sense given the results of the reduced form and first-stage regressions. 
+
+
+**Offer an explanation for any surprise you find.**  
+Card suggests in his paper that this might be that the marginal students being induced by the instrument have a higher return than the average person that goes to college. In other words, we are finding an effect for a certain type of person with the IV that we aren't picking up with the OLS (LATE v. ATE estimates). 
+
+
+## Heterogenous Treatment Effects
+We're interested in how the training program affects earnings. The "assignment" dummy variable is the instrument and the "treatment" variable is the endogenous variable (as the assignment to be in the treatment or control group was not binding and people were simply offered the training by lottery). Open job training data. 
+~~~
+<<dd_do>>	
+use "${datapath}jtpa.dta", clear	
+<</dd_do>>
+~~~	
+### Endogeneity in an RCT   
+Run a regression of the "assignment" dummy variable on highschool, black, hispanic, married, and four of the 5 age dummies. 
+~~~
+<<dd_do>>	
+glob control_set2 "highschool black hispanic married age1 age2 age3 age4"
+reg assignment $control_set2, robust
+<</dd_do>>
+~~~	
+
+**Does the randomization appear to have been done correctly?**
+Yes, there are no statistically significant differences at the p<.05 level across this set of demographic variables, and we see only 1 variable with a significant coefficient at the p<0.10 level. This suggest that folks randomized to the treatment and control groups would have the same expected outcomes based on this set of observables. 
+
+Repeat the previous regression but use "treatment" as the dependent variable. 
+~~~
+<<dd_do>>	
+reg treatment $control_set2, robust
+<</dd_do>>
+~~~	
+
+**Are those who end up treated different from those who end up untreated?**
+Yes, we see statistically significant differences across these demographic variables suggesting that folks in the treatment group *are* different than folks in the untreated group in terms of high school graduation, marriage status, and in three of the four age groups (not age3). 
+
+Run a regression of earnings on the treatment dummy. 
+~~~
+<<dd_do>>	
+reg earnings treatment, robust
+<</dd_do>>
+~~~	
+
+Repeat this regression adding the same set of covaraites as above. 
+~~~
+<<dd_do>>	
+reg earnings treatment $control_set2, robust
+<</dd_do>>
+~~~	
+
+**Does the coefficient on "treatment" in the bivariate regression have a causal interpretation? Why or why not?**  
+We did not randomly assign people into the treatment and control groups; we randomized into the "assignment" to treatment. This means we could not enforce which people actually received the treatment, and as we can see in the regression using treatment as the dependent variable with our controls as the covariates, the people in the treatment and control groups seem to be different. Thus, we cannot include a causal interpretation for this bivariate regression. 
+
+**What assumption would we need to make in the regression with covariates such that the coefficient on "treatment" had a causal interpretation?**    
+We would need to assume that *treatment* is plausibly random conditional on this set of observables we include as controls so that we could believe that the expected untreated outcomes would be equal between the treated and control groups. 
+
+### Causality
+Run a regression of earnings on assignment. 
+~~~
+<<dd_do>>	
+reg earnings assignment, robust
+<</dd_do>>
+~~~	
+
+**Does the coefficient on "assignment" have a causal interpretation? If so, what kind of "treatment effect" is it?**   
+Including "assignment" as the estimator of interest here allows us to take advantage of the random assignment in our research design. The coefficient on this variable tells us the Intent-to-Treat (ITT) causal effect. In other words, we can report the causal effect of being *offered* the job training program on earnings. 
+
+Add all of the covariates from before and repeat the regression. 
+~~~
+<<dd_do>>	
+reg earnings assignment $control_set2, robust
+<</dd_do>>
+~~~	
+
+**Given your answer to the previous question, why would you want to include these covariates?**   
+We would want to include this set of controls if we believe that they would be correlated with our outcome because they will absorb residual variation in the outcome and make our estimate of the ITT more precise. We would also want to include them if we believe that the indpendence assumption holds conditional on this set of covariates, which would be neccessary for us to give a causal interpretation to our estimator. 
+
+**How does the inclusion of these covariates affect your results?**  
+We actually see that our estimate of the effect of being assigned to job training on earnings (coefficient on "assignment") decreases and loses statistical significance after including the covariates. This suggests to me that this set of covariates is not doing a great job of explaining residual variation in the outcome and actually is just making our estimate noisier as it may be "stealing" some variance in the outcome from the precitor.  
+
+
+## IV and LATE
+### Types
+Run cross-tabs with treatment status as the row variable and assignment status as the column variable. Include an option to have STATA show the within-column frequencies. 
+~~~
+<<dd_do>>	
+tab treatment assignment, col
+<</dd_do>>
+~~~	
+**Based on our discussion in class, what fraction of people are "always-takers"?**  
+To calculate each of the three groups (always-takers, never-takers, and compliers), we have to first assume that we don't have any "defiers" in our sample. As such, we would assume that always-takers would be the people who were assigned to the control group, but ended up being treated (assignment=0, treatment=1). This makes up about 1% of our sample. 
+
+**What fraction are never-takers?**  
+We would assume that the never-takers are the people who were assigned to treatment (assignment=1), but did not end up in the treated group (treatment=0). This group is about 38% of our sample. 
+
+**What fraction are compliers?**   
+Finally, the compliers are the people who would be left in our sample. We can calculate this number by subtracting the percentage of never-takers and the percentage of always-takers from 100%. We estimate that about 61% of our sample are compliers. 
+
+### LATE   
+**Based only on the results you have already obtained, what will be the coefficient on the "treatment" variable in an IV regression with "assignment" as the excluded instrument (without controls)? How do you know?**   
+We would assume that the coefficient on the "treatment" variable in an IV regression would be the same as the result of dividing the coefficient on the assignment variable from the reduced regression (1,117) by the proportion of compliers in our sample (0.6116). Thus, we estimate the coefficient on the "treatment" variable in the IV regression will be about 1,826. 
+
+Run this IV (2SLS) regression. **Does the coefficient match your answer from above?**   
+
+Yes!   
+
+~~~
+<<dd_do>>	
+ivregress 2sls earnings (treatment=assignment), vce(robust)
+<</dd_do>>
+~~~	
+**Does this coefficient have a causal interpretation? How do you know? If it has a causal interpretation, what type(s) of treatment effect does it measure?** 
+Yes, we would be able to include a causal interpretation for the coefficient on treatment using the IV specification. We can ascribe a causal interpretation here because we are leveraging the random assignment of being offered the job training and conditioning on the assumption that the only way the job training would impact earnings is through the offer of the job training. We think this is a pretty reasonable assumption given we are estimating that about 62% of our sample complied with their random assignment to receive/not receive the job training.   
+
+This interpretation is the "Local Average Treatment Effect" (LATE) and describes the average treatment effect of the receiving the job training on earnings *among compliers*. That is, we can estimate the effect for people who attend the training among the group of people who recieved the offer of training.    
+
+What are the average "untrained" earnings among "never-takers"?    
+~~~
+<<dd_do>>	
+su earnings if treatment==0 & assignment==1
+<</dd_do>>
+~~~	
+We would estimate that the average untrained earnings among never-takers is about 16,200 dollars. 
+
+**On the whole, do you think that the treatment effect you identified using IV will be of broad interest (i.e. is it likely to have external validity to other similar training?) Justify your answer.**    
+
+I think that broadly speaking, the treatment effect is interesting. Folks who are leading the job training initiative want to know if people who have enough motivation to look into job training, but don't actually have the skills the program would provide, would be positively impacted by the program. They would be interested in learning the effect of the program on people who we would consider "compliers", that is, people who would take the training if it were offered to them. 
+
+
+
+
+
